@@ -142,13 +142,7 @@ function init() {
         updateHugData();
 
         // ❤️ 擁抱專用愛心動畫
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 },
-          shapes: ['circle'],
-          colors: ['#ff5c8d', '#ff3366', '#ff99aa']
-        });
+        shootHearts();
       });
     });
   });
@@ -237,6 +231,24 @@ function init() {
   loadMessages();
   updateHugData();
 }
+
+function shootHearts() {
+    const container = document.getElementById("heartContainer");
+    const emojis = ["💖", "💗", "💘", "💞", "💕"];
+    for (let i = 0; i < 15; i++) {
+      const span = document.createElement("span");
+      span.className = "heart";
+      span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      span.style.left = `${Math.random() * 200 - 100}px`;
+      span.style.setProperty('--x', `${Math.random() * 100 - 50}px`);
+      span.style.setProperty('--y', `${Math.random() * 100 - 50}px`);
+      container.appendChild(span);
+  
+      setTimeout(() => {
+        container.removeChild(span);
+      }, 1200);
+    }
+  }
 
 document.readyState === "loading"
   ? document.addEventListener("DOMContentLoaded", init)
