@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>步數挑戰系統</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-database-compat.js"></script>
+
+  <!-- Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+  <div class="container mt-5">
+    <h1 class="text-center mb-4">🏃‍♀️ 步數挑戰系統</h1>
+
+    <div class="mb-4 text-center">
+      <select id="nameSelect" class="form-select mb-2" style="max-width: 300px; margin: 0 auto;">
+        <option value="">請選擇參賽者</option>
+        <option>一休</option>
+        <option>淑貞</option>
+        <option>小唯</option>
+        <option>沛蓁</option>
+        <option>漢娜</option>
+        <option>育銘</option>
+        <option>聖佳</option>
+        <option>慧蘭</option>
+        <option>vivian</option>
+        <option>annie</option>
+        <option>emily</option>
+      </select>
+      <input type="date" id="dateInput" class="form-control mb-2" style="max-width: 300px; margin: 0 auto;" />
+      <input type="number" id="stepInput" class="form-control mb-2" placeholder="請輸入今日步數" style="max-width: 300px; margin: 0 auto;" />
+      <button id="submitBtn" class="btn btn-primary">提交步數</button>
+    </div>
+
+    <div id="message" class="alert alert-success text-center" style="display: none;"></div>
+
+    <canvas id="chart" height="100"></canvas>
+
+    <h4 class="mt-4">🏆 步數排行榜</h4>
+    <table id="leaderboardTable" class="table table-bordered mt-2"></table>
+  </div>
+
+  <!-- Firebase 初始化 -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDffz_ikeyugvTxZMRNwaO-31iRCZkJUoA",
+      authDomain: "artemis-weight-class.firebaseapp.com",
+      databaseURL: "https://artemis-weight-class-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "artemis-weight-class",
+      storageBucket: "artemis-weight-class.appspot.com",
+      messagingSenderId: "591342091914",
+      appId: "1:591342091914:web:a35ea1de392e848961f773",
+      measurementId: "G-HW01886DST"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    window.firebaseDatabase = database;
+  </script>
+
+  <!-- 主功能 -->
+  <script src="script.js"></script>
+</body>
+</html>
