@@ -15,6 +15,8 @@ function init() {
   const submitBtn = document.getElementById("submitBtn");
   const messageDiv = document.getElementById("message");
   const monthSelect = document.getElementById("monthSelect");
+  const table = document.getElementById("leaderboardTable");
+  const chartCanvas = document.getElementById("chart");
   const database = window.firebaseDatabase;
 
   submitBtn.addEventListener("click", () => {
@@ -39,7 +41,7 @@ function init() {
     }).then(() => {
       showMessage(`${name} 今天加了 ${steps} 步！加油！`);
       confetti();
-      updateMonthOptions(); // 更新下拉月份
+      updateMonthOptions(); // 重新載入月份與排行榜
     }).catch(err => {
       console.error("❌ 儲存失敗：", err);
       alert("儲存失敗，請稍後再試！");
@@ -48,7 +50,9 @@ function init() {
 
   monthSelect.addEventListener("change", () => {
     const selectedMonth = monthSelect.value;
-    if (selectedMonth) updateLeaderboard(selectedMonth);
+    if (selectedMonth) {
+      updateLeaderboard(selectedMonth);
+    }
   });
 
   updateMonthOptions();
@@ -78,12 +82,15 @@ function updateMonthOptions() {
 
     const sortedMonths = Array.from(monthsSet).sort().reverse();
 
-    monthSelect.innerHTML = sortedMonths.map(m => `<option value="${m}">${m}</option>`).join("");
-
-    if (sortedMonths.length > 0) {
-      monthSelect.value = sortedMonths[0]; // 預設最新月份
-      updateLeaderboard(sortedMonths[0]);
+    if (sortedMonths.length === 0) {
+      document.getElementById("leaderboardTable").innerHTML =
+        `<tr><td colspan="4" class="text-center">📭 目前尚無任何步數資料，請先提交！</td></tr>`;
+      return;
     }
+
+    monthSelect.innerHTML = sortedMonths.map(m => `<option value="${m}">${m}</option>`).join("");
+    monthSelect.value = sortedMonths[0];
+    updateLeaderboard(sortedMonths[0]);
   });
 }
 
@@ -111,7 +118,12 @@ function updateLeaderboard(month) {
 
     leaderboard.sort((a, b) => b.total - a.total);
 
-    // 表格
+    if (leaderboard.length === 0) {
+      table.innerHTML = `<tr><td colspan="4" class="text-center">📭 本月尚無步數資料</td></tr>`;
+      return;
+    }
+
+    // 建表格
     let html = `<thead><tr><th>名次</th><th>姓名</th><th>總步數</th><th>評語</th></tr></thead><tbody>`;
     leaderboard.forEach((entry, i) => {
       const rank = i + 1;
