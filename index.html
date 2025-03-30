@@ -7,13 +7,9 @@
 
   <!-- 小圖示 -->
   <link rel="icon" href="favicon.png" type="image/png" />
-  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Confetti -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-database-compat.js"></script>
 </head>
@@ -46,10 +42,19 @@
 
   <div id="message" class="alert alert-info text-center" style="display: none;"></div>
 
-  <!-- 月份選單 -->
-  <div class="text-center mb-3">
-    <label for="monthSelect" class="form-label">📅 選擇月份查看排行榜</label>
-    <select id="monthSelect" class="form-select" style="max-width: 200px; margin: 0 auto;"></select>
+  <!-- 月份 & 排行類型選單 -->
+  <div class="row justify-content-center mb-3">
+    <div class="col-md-3">
+      <label for="monthSelect" class="form-label">📅 月份</label>
+      <select id="monthSelect" class="form-select"></select>
+    </div>
+    <div class="col-md-3">
+      <label for="rankMode" class="form-label">📊 排行類型</label>
+      <select id="rankMode" class="form-select">
+        <option value="week">週榜（本週）</option>
+        <option value="month">月榜（當月）</option>
+      </select>
+    </div>
   </div>
 
   <canvas id="chart" height="120"></canvas>
@@ -58,32 +63,32 @@
   <h4 class="mt-4">🏅 排行榜</h4>
   <table id="leaderboardTable" class="table table-bordered table-striped mt-2 text-center"></table>
 
-  <!-- 🧡 留言牆 -->
-  <div class="mt-5">
-    <h4>🧡 今日留言牆</h4>
-    <ul id="messageList" class="list-group mb-3"></ul>
-    <div class="input-group mb-2">
-      <select id="messageName" class="form-select" style="max-width: 150px">
-        <option value="">我是誰</option>
-        <option>一休</option>
-        <option>淑貞</option>
-        <option>小唯</option>
-        <option>沛蓁</option>
-        <option>漢娜</option>
-        <option>育銘</option>
-        <option>聖佳</option>
-        <option>慧蘭</option>
-        <option>vivian</option>
-        <option>annie</option>
-        <option>emily</option>
-      </select>
-      <input type="text" id="messageInput" class="form-control" placeholder="輸入你的鼓勵訊息" />
-      <button id="sendMessageBtn" class="btn btn-primary">送出留言</button>
-    </div>
-  </div>
-
-    <!-- 🤗 擁抱功能 -->
+    <!-- 🧡 留言牆 -->
     <div class="mt-5">
+        <h4>🧡 今日留言牆</h4>
+        <ul id="messageList" class="list-group mb-3"></ul>
+        <div class="input-group mb-2">
+          <select id="messageName" class="form-select" style="max-width: 150px">
+            <option value="">我是誰</option>
+            <option>一休</option>
+            <option>淑貞</option>
+            <option>小唯</option>
+            <option>沛蓁</option>
+            <option>漢娜</option>
+            <option>育銘</option>
+            <option>聖佳</option>
+            <option>慧蘭</option>
+            <option>vivian</option>
+            <option>annie</option>
+            <option>emily</option>
+          </select>
+          <input type="text" id="messageInput" class="form-control" placeholder="輸入你的鼓勵訊息" />
+          <button id="sendMessageBtn" class="btn btn-primary">送出留言</button>
+        </div>
+      </div>
+    
+      <!-- 🤗 擁抱功能 -->
+      <div class="mt-5">
         <h4>🤗 每日 3 次擁抱</h4>
         <div class="row g-2">
           <div class="col-md-3">
@@ -152,7 +157,7 @@
       }
     </script>
     
-    <!-- ✅ 載入主要功能 -->
+    <!-- ✅ 主功能 -->
     <script src="script.js"></script>
     </body>
     </html>
