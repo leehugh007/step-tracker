@@ -1,181 +1,194 @@
 console.log("✅ script.js 已成功載入！");
-
+let myChart = null;
 const encouragements = [
-  "你是最棒的！🌟", "腳步不停，目標更近！🚶‍♀️🚶‍♂️", "太厲害了！再接再厲！🔥",
-  "堅持就是勝利！💪", "每天一點點，終會看到成果！🌈", "做得好！再多一步也不怕！👏",
-  "你已經超越昨天的自己了！✨", "讓我們邁開腳步吧！👟", "今日目標達成！🎯",
-  "行動中的冠軍！🏆", "再多走一點，就是超越！🚀", "你正走在健康的道路上！🛤️",
-  "每一步都值得鼓掌！👏", "燃燒你的卡路里🔥", "再前進一小步，就是大進步！🚶"
+  "你是最棒的！🌟", "腳步不停，目標更近！🚶‍♀️", "太厲害了！再接再厲！🔥",
+  "堅持就是勝利！💪", "每天一點點，終會看到成果！🌈", "再前進一小步，就是大進步！🚶"
 ];
 
-let myChart = null; // 🎯 全局圖表變數
-
 function init() {
+  const db = window.firebaseDatabase;
   const nameSelect = document.getElementById("nameSelect");
   const dateInput = document.getElementById("dateInput");
   const stepInput = document.getElementById("stepInput");
   const submitBtn = document.getElementById("submitBtn");
   const messageDiv = document.getElementById("message");
   const monthSelect = document.getElementById("monthSelect");
-  const table = document.getElementById("leaderboardTable");
-  const chartCanvas = document.getElementById("chart");
-  const database = window.firebaseDatabase;
+
+  const today = new Date().toISOString().slice(0, 10);
+  dateInput.value = today;
 
   submitBtn.addEventListener("click", () => {
     const name = nameSelect.value;
     const date = dateInput.value;
     const steps = parseInt(stepInput.value, 10);
-
-    if (!name || !date || isNaN(steps) || steps <= 0) {
-      alert("請完整填寫參賽者、日期與步數！");
-      return;
-    }
+    if (!name || !date || isNaN(steps)) return alert("請完整填寫");
 
     const month = date.slice(0, 7);
-    const userRef = database.ref(`steps/${name}/${month}`);
-
-    userRef.once("value").then(snapshot => {
-      let data = snapshot.val() || { total: 0, records: [] };
+    const ref = db.ref(`steps/${name}/${month}`);
+    ref.once("value").then(snapshot => {
+      const data = snapshot.val() || { total: 0, records: [] };
       data.total += steps;
       data.records.push({ date, steps });
-
-      return userRef.set(data);
+      return ref.set(data);
     }).then(() => {
-      showMessage(`${name} 今天加了 ${steps} 步！加油！`);
+      const msg = encouragements[Math.floor(Math.random() * encouragements.length)];
+      messageDiv.textContent = `🎉 簽到成功！${msg}`;
+      messageDiv.style.display = "block";
       confetti();
-      updateMonthOptions(); // 刷新排行榜與月份選單
-    }).catch(err => {
-      console.error("❌ 儲存失敗：", err);
-      alert("儲存失敗，請稍後再試！");
+      loadLeaderboard(month);
     });
+  });
+
+  // 初始化月份選單
+  db.ref("steps").once("value").then(snapshot => {
+    const months = new Set();
+    snapshot.forEach(userSnap => {
+      Object.keys(userSnap.val()).forEach(month => months.add(month));
+    });
+    const sortedMonths = Array.from(months).sort().reverse();
+    sortedMonths.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m;
+      opt.textContent = m;
+      monthSelect.appendChild(opt);
+    });
+    if (sortedMonths.length > 0) {
+      monthSelect.value = sortedMonths[0];
+      loadLeaderboard(sortedMonths[0]);
+    }
   });
 
   monthSelect.addEventListener("change", () => {
     const selectedMonth = monthSelect.value;
-    if (selectedMonth) {
-      updateLeaderboard(selectedMonth);
-    }
+    loadLeaderboard(selectedMonth);
   });
 
-  updateMonthOptions();
-}
+  // 留言牆功能
+  const sendMessageBtn = document.getElementById("sendMessageBtn");
+  const messageInput = document.getElementById("messageInput");
+  const messageList = document.getElementById("messageList");
 
-function showMessage(text) {
-  const messageDiv = document.getElementById("message");
-  const randomMsg = encouragements[Math.floor(Math.random() * encouragements.length)];
-  messageDiv.textContent = `${text} ${randomMsg}`;
-  messageDiv.style.display = "block";
-  setTimeout(() => { messageDiv.style.display = "none"; }, 5000);
-}
+  sendMessageBtn.addEventListener("click", () => {
+    const name = nameSelect.value;
+    const text = messageInput.value.trim();
+    if (!name || !text) return alert("請選擇名字並輸入訊息");
 
-function updateMonthOptions() {
-  const monthSelect = document.getElementById("monthSelect");
-  const database = window.firebaseDatabase;
-
-  database.ref("steps").once("value").then(snapshot => {
-    const data = snapshot.val() || {};
-    const monthsSet = new Set();
-
-    for (const name in data) {
-      for (const month in data[name]) {
-        monthsSet.add(month);
-      }
-    }
-
-    const sortedMonths = Array.from(monthsSet).sort().reverse();
-
-    if (sortedMonths.length === 0) {
-      document.getElementById("leaderboardTable").innerHTML =
-        `<tr><td colspan="4" class="text-center">📭 目前尚無任何步數資料，請先提交！</td></tr>`;
-      return;
-    }
-
-    monthSelect.innerHTML = sortedMonths.map(m => `<option value="${m}">${m}</option>`).join("");
-    monthSelect.value = sortedMonths[0];
-    updateLeaderboard(sortedMonths[0]);
-  });
-}
-
-function updateLeaderboard(month) {
-  const database = window.firebaseDatabase;
-  const table = document.getElementById("leaderboardTable");
-  const chartCanvas = document.getElementById("chart");
-
-  const rankMessages = [
-    "別再走了，留點別給人追 🥇",
-    "你走太多了，坐下來休息一下 🥈",
-    "多走一點你就追上前2名了 🥉"
-  ];
-
-  database.ref("steps").once("value").then(snapshot => {
-    const data = snapshot.val() || {};
-    let leaderboard = [];
-
-    for (const name in data) {
-      const monthData = data[name][month];
-      if (monthData) {
-        leaderboard.push({ name, total: monthData.total });
-      }
-    }
-
-    leaderboard.sort((a, b) => b.total - a.total);
-
-    if (leaderboard.length === 0) {
-      table.innerHTML = `<tr><td colspan="4" class="text-center">📭 本月尚無步數資料</td></tr>`;
-      if (myChart) {
-        myChart.destroy();
-        myChart = null;
-      }
-      return;
-    }
-
-    // 表格
-    let html = `<thead><tr><th>名次</th><th>姓名</th><th>總步數</th><th>評語</th></tr></thead><tbody>`;
-    leaderboard.forEach((entry, i) => {
-      const rank = i + 1;
-      const msg = rankMessages[i] || "";
-      html += `<tr>
-        <td>${rank}</td>
-        <td>${entry.name}</td>
-        <td>${entry.total}</td>
-        <td>${msg}</td>
-      </tr>`;
+    const msgRef = db.ref(`messages/${today}`).push();
+    msgRef.set({ name, text, time: Date.now() }).then(() => {
+      messageInput.value = "";
+      loadMessages();
     });
-    html += "</tbody>";
-    table.innerHTML = html;
+  });
 
-    // 清除舊圖
-    if (myChart) {
-      myChart.destroy();
-    }
+  function loadMessages() {
+    db.ref(`messages/${today}`).once("value").then(snapshot => {
+      messageList.innerHTML = "";
+      snapshot.forEach(child => {
+        const { name, text } = child.val();
+        const li = document.createElement("li");
+        li.className = "list-group-item";
+        li.textContent = `💬 ${name}：${text}`;
+        messageList.appendChild(li);
+      });
+    });
+  }
 
-    // 畫新圖
-    const labels = leaderboard.map(entry => entry.name);
-    const totals = leaderboard.map(entry => entry.total);
+  // 擁抱功能
+  const hugTo = document.getElementById("hugTo");
+  const hugMsg = document.getElementById("hugMessage");
+  const sendHugBtn = document.getElementById("sendHugBtn");
+  const hugSentList = document.getElementById("hugSentList");
+  const hugReceivedList = document.getElementById("hugReceivedList");
 
-    myChart = new Chart(chartCanvas, {
-      type: "bar",
-      data: {
-        labels,
-        datasets: [{
-          label: `${month} 步數排行`,
-          data: totals,
-          backgroundColor: "rgba(75, 192, 192, 0.6)"
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false },
-          title: { display: true, text: `${month} 步數圖表` }
+  sendHugBtn.addEventListener("click", () => {
+    const from = nameSelect.value;
+    const to = hugTo.value;
+    const text = hugMsg.value.trim();
+    if (!from || !to || !text) return alert("請完整選擇與輸入");
+    if (from === to) return alert("不能擁抱自己哦 😄");
+
+    const countRef = db.ref(`hugCounts/${today}/${from}`);
+    countRef.once("value").then(snap => {
+      const count = snap.val() || 0;
+      if (count >= 3) return alert("你今天已經送出 3 次擁抱囉！");
+      db.ref(`hugs/${today}`).push({ from, to, message: text }).then(() => {
+        countRef.set(count + 1);
+        hugMsg.value = "";
+        updateHugData();
+        confetti();
+      });
+    });
+  });
+
+  function updateHugData() {
+    const me = nameSelect.value;
+    let sentTo = [];
+    let receivedFrom = [];
+    hugSentList.textContent = "尚未擁抱";
+    hugReceivedList.innerHTML = "";
+
+    db.ref(`hugs/${today}`).once("value").then(snapshot => {
+      snapshot.forEach(child => {
+        const { from, to, message } = child.val();
+        if (from === me) sentTo.push(to);
+        if (to === me) {
+          const li = document.createElement("li");
+          li.className = "list-group-item";
+          li.textContent = `✔️ ${from}：${message}`;
+          hugReceivedList.appendChild(li);
         }
-      }
+      });
+      if (sentTo.length > 0) hugSentList.textContent = sentTo.join("、");
     });
-  });
+  }
+
+  function loadLeaderboard(month) {
+    const ref = db.ref("steps");
+    ref.once("value").then(snapshot => {
+      const userSteps = [];
+      snapshot.forEach(userSnap => {
+        const name = userSnap.key;
+        const data = userSnap.val()[month];
+        if (data) {
+          userSteps.push({ name, total: data.total || 0 });
+        }
+      });
+      userSteps.sort((a, b) => b.total - a.total);
+
+      // 排行表
+      const table = document.getElementById("leaderboardTable");
+      table.innerHTML = "<tr><th>名次</th><th>姓名</th><th>總步數</th><th>評語</th></tr>";
+      userSteps.forEach((user, index) => {
+        const tr = document.createElement("tr");
+        const comment = index === 0 ? "別再走了，留點給人追 🥇"
+                      : index === 1 ? "你走太多了，坐下來休息 🥈"
+                      : index === 2 ? "多走一點你就追上了 🥉"
+                      : "";
+        tr.innerHTML = `<td>${index + 1}</td><td>${user.name}</td><td>${user.total}</td><td>${comment}</td>`;
+        table.appendChild(tr);
+      });
+
+      // 圖表
+      if (myChart) myChart.destroy();
+      const ctx = document.getElementById("chart").getContext("2d");
+      myChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: userSteps.map(u => u.name),
+          datasets: [{
+            label: "累積步數",
+            data: userSteps.map(u => u.total),
+            backgroundColor: "#4CAF50"
+          }]
+        }
+      });
+    });
+  }
+
+  loadMessages();
+  updateHugData();
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
-}
+document.readyState === "loading"
+  ? document.addEventListener("DOMContentLoaded", init)
+  : init();

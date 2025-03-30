@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>步數挑戰排行榜</title>
+  <title>步數挑戰系統</title>
 
-  <!-- ✅ 小圖示 -->
+  <!-- 網站小圖示 -->
   <link rel="icon" href="favicon.png" type="image/png" />
 
   <!-- Bootstrap -->
@@ -14,10 +14,10 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- Confetti 彩帶 -->
+  <!-- Confetti -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-database-compat.js"></script>
 </head>
@@ -25,7 +25,7 @@
   <div class="container py-4">
     <h2 class="text-center mb-4">🏃 步數挑戰簽到系統</h2>
 
-    <!-- 🧍‍♀️ 使用者與步數填寫區 -->
+    <!-- 輸入區 -->
     <div class="row justify-content-center mb-4">
       <div class="col-md-4">
         <select id="nameSelect" class="form-select mb-2">
@@ -42,29 +42,67 @@
           <option>annie</option>
           <option>emily</option>
         </select>
-
         <input type="date" id="dateInput" class="form-control mb-2" />
         <input type="number" id="stepInput" class="form-control mb-2" placeholder="請輸入今日步數" />
-
         <button id="submitBtn" class="btn btn-success w-100">✅ 提交步數</button>
       </div>
     </div>
 
-    <!-- 🎉 鼓勵訊息 -->
     <div id="message" class="alert alert-info text-center" style="display: none;"></div>
 
-    <!-- 📅 月份選擇 -->
+    <!-- 月份選單 -->
     <div class="text-center mb-3">
       <label for="monthSelect" class="form-label">📅 選擇月份查看排行榜</label>
       <select id="monthSelect" class="form-select" style="max-width: 200px; margin: 0 auto;"></select>
     </div>
 
-    <!-- 📊 圖表 -->
     <canvas id="chart" height="120"></canvas>
 
-    <!-- 🏆 排行榜表格 -->
+    <!-- 排行榜 -->
     <h4 class="mt-4">🏅 排行榜</h4>
     <table id="leaderboardTable" class="table table-bordered table-striped mt-2 text-center"></table>
+
+    <!-- 🧡 留言牆 -->
+    <div class="mt-5">
+      <h4>🧡 今日留言牆</h4>
+      <ul id="messageList" class="list-group mb-3"></ul>
+      <div class="input-group">
+        <input type="text" id="messageInput" class="form-control" placeholder="輸入你的鼓勵訊息" />
+        <button id="sendMessageBtn" class="btn btn-primary">送出留言</button>
+      </div>
+    </div>
+
+    <!-- 🤗 擁抱功能 -->
+    <div class="mt-5">
+      <h4>🤗 每日 3 次擁抱</h4>
+      <div class="row">
+        <div class="col-md-4 mb-2">
+          <select id="hugTo" class="form-select">
+            <option value="">選擇要擁抱的人</option>
+            <option>一休</option>
+            <option>淑貞</option>
+            <option>小唯</option>
+            <option>沛蓁</option>
+            <option>漢娜</option>
+            <option>育銘</option>
+            <option>聖佳</option>
+            <option>慧蘭</option>
+            <option>vivian</option>
+            <option>annie</option>
+            <option>emily</option>
+          </select>
+        </div>
+        <div class="col-md-6 mb-2">
+          <input type="text" id="hugMessage" class="form-control" placeholder="說句加油的話吧！" />
+        </div>
+        <div class="col-md-2 mb-2">
+          <button id="sendHugBtn" class="btn btn-warning w-100">送出擁抱 🤗</button>
+        </div>
+      </div>
+      <p class="text-muted">今天你擁抱了：<span id="hugSentList">尚未擁抱</span></p>
+      <p class="text-muted">今天擁抱你的人：</p>
+      <ul id="hugReceivedList" class="list-group"></ul>
+    </div>
   </div>
 
   <!-- Firebase 初始化 -->
@@ -76,22 +114,18 @@
       storageBucket: "artemis-weight-class.appspot.com",
       messagingSenderId: "591342091914",
       appId: "1:591342091914:web:a35ea1de392e848961f773",
-      measurementId: "G-HW01886DST",
       databaseURL: "https://artemis-weight-class-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
-
     try {
       const app = firebase.initializeApp(firebaseConfig);
       const database = firebase.database();
-      console.log("✅ Firebase 已正確初始化！");
+      console.log("✅ Firebase 已初始化");
       window.firebaseDatabase = database;
     } catch (e) {
-      console.error("❌ Firebase 初始化失敗", e);
-      alert("Firebase 初始化失敗，請檢查設定！");
+      alert("Firebase 初始化失敗！");
     }
   </script>
 
-  <!-- 主要邏輯 -->
   <script src="script.js"></script>
 </body>
 </html>
