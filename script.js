@@ -1,9 +1,19 @@
 console.log("✅ script.js 已成功載入！");
 let myChart = null;
+
 const encouragements = [
   "你是最棒的！🌟", "腳步不停，目標更近！🚶‍♀️", "太厲害了！再接再厲！🔥",
   "堅持就是勝利！💪", "每天一點點，終會看到成果！🌈", "再前進一小步，就是大進步！🚶"
 ];
+
+function saveName(id) {
+  const val = document.getElementById(id).value;
+  localStorage.setItem("stepTracker_" + id, val);
+}
+function loadName(id) {
+  const saved = localStorage.getItem("stepTracker_" + id);
+  if (saved) document.getElementById(id).value = saved;
+}
 
 function init() {
   const db = window.firebaseDatabase;
@@ -14,14 +24,31 @@ function init() {
   const messageDiv = document.getElementById("message");
   const monthSelect = document.getElementById("monthSelect");
 
+  const messageInput = document.getElementById("messageInput");
+  const messageName = document.getElementById("messageName");
+  const sendMessageBtn = document.getElementById("sendMessageBtn");
+  const messageList = document.getElementById("messageList");
+
+  const hugFrom = document.getElementById("hugFrom");
+  const hugTo = document.getElementById("hugTo");
+  const hugMessage = document.getElementById("hugMessage");
+  const sendHugBtn = document.getElementById("sendHugBtn");
+  const hugSentList = document.getElementById("hugSentList");
+  const hugReceivedList = document.getElementById("hugReceivedList");
+
   const today = new Date().toISOString().slice(0, 10);
   dateInput.value = today;
 
+  // === 本地記憶 ===
+  ["nameSelect", "messageName", "hugFrom"].forEach(loadName);
+
+  // === 步數簽到 ===
   submitBtn.addEventListener("click", () => {
     const name = nameSelect.value;
     const date = dateInput.value;
     const steps = parseInt(stepInput.value, 10);
     if (!name || !date || isNaN(steps)) return alert("請完整填寫");
+    saveName("nameSelect");
 
     const month = date.slice(0, 7);
     const ref = db.ref(`steps/${name}/${month}`);
@@ -39,7 +66,7 @@ function init() {
     });
   });
 
-  // 初始化月份選單
+  // === 月份初始化 ===
   db.ref("steps").once("value").then(snapshot => {
     const months = new Set();
     snapshot.forEach(userSnap => {
@@ -63,15 +90,12 @@ function init() {
     loadLeaderboard(selectedMonth);
   });
 
-  // 留言牆功能
-  const sendMessageBtn = document.getElementById("sendMessageBtn");
-  const messageInput = document.getElementById("messageInput");
-  const messageList = document.getElementById("messageList");
-
+  // === 留言牆 ===
   sendMessageBtn.addEventListener("click", () => {
-    const name = nameSelect.value;
+    const name = messageName.value;
     const text = messageInput.value.trim();
     if (!name || !text) return alert("請選擇名字並輸入訊息");
+    saveName("messageName");
 
     const msgRef = db.ref(`messages/${today}`).push();
     msgRef.set({ name, text, time: Date.now() }).then(() => {
@@ -93,19 +117,14 @@ function init() {
     });
   }
 
-  // 擁抱功能
-  const hugTo = document.getElementById("hugTo");
-  const hugMsg = document.getElementById("hugMessage");
-  const sendHugBtn = document.getElementById("sendHugBtn");
-  const hugSentList = document.getElementById("hugSentList");
-  const hugReceivedList = document.getElementById("hugReceivedList");
-
+  // === 擁抱功能 ===
   sendHugBtn.addEventListener("click", () => {
-    const from = nameSelect.value;
+    const from = hugFrom.value;
     const to = hugTo.value;
-    const text = hugMsg.value.trim();
+    const text = hugMessage.value.trim();
     if (!from || !to || !text) return alert("請完整選擇與輸入");
     if (from === to) return alert("不能擁抱自己哦 😄");
+    saveName("hugFrom");
 
     const countRef = db.ref(`hugCounts/${today}/${from}`);
     countRef.once("value").then(snap => {
@@ -113,7 +132,7 @@ function init() {
       if (count >= 3) return alert("你今天已經送出 3 次擁抱囉！");
       db.ref(`hugs/${today}`).push({ from, to, message: text }).then(() => {
         countRef.set(count + 1);
-        hugMsg.value = "";
+        hugMessage.value = "";
         updateHugData();
         confetti();
       });
@@ -121,9 +140,8 @@ function init() {
   });
 
   function updateHugData() {
-    const me = nameSelect.value;
+    const me = hugFrom.value;
     let sentTo = [];
-    let receivedFrom = [];
     hugSentList.textContent = "尚未擁抱";
     hugReceivedList.innerHTML = "";
 
@@ -155,15 +173,15 @@ function init() {
       });
       userSteps.sort((a, b) => b.total - a.total);
 
-      // 排行表
+      // 表格
       const table = document.getElementById("leaderboardTable");
       table.innerHTML = "<tr><th>名次</th><th>姓名</th><th>總步數</th><th>評語</th></tr>";
       userSteps.forEach((user, index) => {
-        const tr = document.createElement("tr");
         const comment = index === 0 ? "別再走了，留點給人追 🥇"
                       : index === 1 ? "你走太多了，坐下來休息 🥈"
                       : index === 2 ? "多走一點你就追上了 🥉"
                       : "";
+        const tr = document.createElement("tr");
         tr.innerHTML = `<td>${index + 1}</td><td>${user.name}</td><td>${user.total}</td><td>${comment}</td>`;
         table.appendChild(tr);
       });
