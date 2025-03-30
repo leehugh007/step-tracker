@@ -8,6 +8,8 @@ const encouragements = [
   "每一步都值得鼓掌！👏", "燃燒你的卡路里🔥", "再前進一小步，就是大進步！🚶"
 ];
 
+let myChart = null; // 🎯 全局圖表變數
+
 function init() {
   const nameSelect = document.getElementById("nameSelect");
   const dateInput = document.getElementById("dateInput");
@@ -41,7 +43,7 @@ function init() {
     }).then(() => {
       showMessage(`${name} 今天加了 ${steps} 步！加油！`);
       confetti();
-      updateMonthOptions(); // 重新載入月份與排行榜
+      updateMonthOptions(); // 刷新排行榜與月份選單
     }).catch(err => {
       console.error("❌ 儲存失敗：", err);
       alert("儲存失敗，請稍後再試！");
@@ -120,10 +122,14 @@ function updateLeaderboard(month) {
 
     if (leaderboard.length === 0) {
       table.innerHTML = `<tr><td colspan="4" class="text-center">📭 本月尚無步數資料</td></tr>`;
+      if (myChart) {
+        myChart.destroy();
+        myChart = null;
+      }
       return;
     }
 
-    // 建表格
+    // 表格
     let html = `<thead><tr><th>名次</th><th>姓名</th><th>總步數</th><th>評語</th></tr></thead><tbody>`;
     leaderboard.forEach((entry, i) => {
       const rank = i + 1;
@@ -138,11 +144,16 @@ function updateLeaderboard(month) {
     html += "</tbody>";
     table.innerHTML = html;
 
-    // 圖表
+    // 清除舊圖
+    if (myChart) {
+      myChart.destroy();
+    }
+
+    // 畫新圖
     const labels = leaderboard.map(entry => entry.name);
     const totals = leaderboard.map(entry => entry.total);
 
-    new Chart(chartCanvas, {
+    myChart = new Chart(chartCanvas, {
       type: "bar",
       data: {
         labels,
