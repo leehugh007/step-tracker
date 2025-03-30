@@ -76,13 +76,13 @@ function init() {
         messageDiv.textContent = `🎉 簽到成功！${msg}`;
         messageDiv.style.display = "block";
        // 擁抱成功後動畫
-confetti({
-    particleCount: 80,
-    spread: 70,
-    origin: { y: 0.6 },
-    shapes: ['circle'],
-    colors: ['#ff5c8d', '#ff3366', '#ff99aa'], // 愛心粉紅紅
-  });
+       confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
+        shapes: ['circle'],
+        colors: ['#ff5c8d', '#ff3366', '#ff99aa'],
+      });
         loadLeaderboard(rankMode.value);
       });
     });
