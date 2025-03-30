@@ -6,7 +6,6 @@ const encouragements = [
   "堅持就是勝利！💪", "每天一點點，終會看到成果！🌈", "再前進一小步，就是大進步！🚶"
 ];
 
-// 記憶身份
 function saveName(id) {
   const val = document.getElementById(id).value;
   localStorage.setItem("stepTracker_" + id, val);
@@ -16,7 +15,6 @@ function loadName(id) {
   if (saved) document.getElementById(id).value = saved;
 }
 
-// 計算週起始日期
 function getWeekRange(dateStr) {
   const date = new Date(dateStr);
   const day = date.getDay(); // 0 (Sun) - 6 (Sat)
@@ -30,86 +28,76 @@ function getWeekRange(dateStr) {
 }
 
 function init() {
-    const db = window.firebaseDatabase;
-    const nameSelect = document.getElementById("nameSelect");
-    const dateInput = document.getElementById("dateInput");
-    const stepInput = document.getElementById("stepInput");
-    const submitBtn = document.getElementById("submitBtn");
-    const messageDiv = document.getElementById("message");
-    const monthSelect = document.getElementById("monthSelect");
-    const rankMode = document.getElementById("rankMode");
-  
-    const messageInput = document.getElementById("messageInput");
-    const messageName = document.getElementById("messageName");
-    const sendMessageBtn = document.getElementById("sendMessageBtn");
-    const messageList = document.getElementById("messageList");
-  
-    const hugFrom = document.getElementById("hugFrom");
-    const hugTo = document.getElementById("hugTo");
-    const hugMessage = document.getElementById("hugMessage");
-    const sendHugBtn = document.getElementById("sendHugBtn");
-    const hugSentList = document.getElementById("hugSentList");
-    const hugReceivedList = document.getElementById("hugReceivedList");
-  
-    const today = new Date().toISOString().slice(0, 10);
-    dateInput.value = today;
-  
-    ["nameSelect", "messageName", "hugFrom"].forEach(loadName);
-  
-    // 提交步數
-    submitBtn.addEventListener("click", () => {
-      const name = nameSelect.value;
-      const date = dateInput.value;
-      const steps = parseInt(stepInput.value, 10);
-      if (!name || !date || isNaN(steps)) return alert("請完整填寫");
-      saveName("nameSelect");
-  
-      const month = date.slice(0, 7);
-      const ref = db.ref(`steps/${name}/${month}`);
-      ref.once("value").then(snapshot => {
-        const data = snapshot.val() || { total: 0, records: [] };
-        data.total += steps;
-        data.records.push({ date, steps });
-        return ref.set(data);
-      }).then(() => {
-        const msg = encouragements[Math.floor(Math.random() * encouragements.length)];
-        messageDiv.textContent = `🎉 簽到成功！${msg}`;
-        messageDiv.style.display = "block";
-       // 擁抱成功後動畫
-       confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 },
-        shapes: ['circle'],
-        colors: ['#ff5c8d', '#ff3366', '#ff99aa'],
-      });
-        loadLeaderboard(rankMode.value);
-      });
-    });
-  
-    // 初始化月份
-    db.ref("steps").once("value").then(snapshot => {
-      const months = new Set();
-      snapshot.forEach(userSnap => {
-        Object.keys(userSnap.val()).forEach(month => months.add(month));
-      });
-      const sortedMonths = Array.from(months).sort().reverse();
-      sortedMonths.forEach(m => {
-        const opt = document.createElement("option");
-        opt.value = m;
-        opt.textContent = m;
-        monthSelect.appendChild(opt);
-      });
-      if (sortedMonths.length > 0) {
-        monthSelect.value = sortedMonths[0];
-        loadLeaderboard(rankMode.value);
-      }
-    });
-  
-    monthSelect.addEventListener("change", () => loadLeaderboard(rankMode.value));
-    rankMode.addEventListener("change", () => loadLeaderboard(rankMode.value));
+  const db = window.firebaseDatabase;
+  const nameSelect = document.getElementById("nameSelect");
+  const dateInput = document.getElementById("dateInput");
+  const stepInput = document.getElementById("stepInput");
+  const submitBtn = document.getElementById("submitBtn");
+  const messageDiv = document.getElementById("message");
+  const monthSelect = document.getElementById("monthSelect");
+  const rankMode = document.getElementById("rankMode");
 
-      // 留言功能
+  const messageInput = document.getElementById("messageInput");
+  const messageName = document.getElementById("messageName");
+  const sendMessageBtn = document.getElementById("sendMessageBtn");
+  const messageList = document.getElementById("messageList");
+
+  const hugFrom = document.getElementById("hugFrom");
+  const hugTo = document.getElementById("hugTo");
+  const hugMessage = document.getElementById("hugMessage");
+  const sendHugBtn = document.getElementById("sendHugBtn");
+  const hugSentList = document.getElementById("hugSentList");
+  const hugReceivedList = document.getElementById("hugReceivedList");
+
+  const today = new Date().toISOString().slice(0, 10);
+  dateInput.value = today;
+
+  ["nameSelect", "messageName", "hugFrom"].forEach(loadName);
+
+  submitBtn.addEventListener("click", () => {
+    const name = nameSelect.value;
+    const date = dateInput.value;
+    const steps = parseInt(stepInput.value, 10);
+    if (!name || !date || isNaN(steps)) return alert("請完整填寫");
+    saveName("nameSelect");
+
+    const month = date.slice(0, 7);
+    const ref = db.ref(`steps/${name}/${month}`);
+    ref.once("value").then(snapshot => {
+      const data = snapshot.val() || { total: 0, records: [] };
+      data.total += steps;
+      data.records.push({ date, steps });
+      return ref.set(data);
+    }).then(() => {
+      const msg = encouragements[Math.floor(Math.random() * encouragements.length)];
+      messageDiv.textContent = `🎉 簽到成功！${msg}`;
+      messageDiv.style.display = "block";
+      confetti(); // 保留簽到彩帶動畫
+      loadLeaderboard(rankMode.value);
+    });
+  });
+
+  db.ref("steps").once("value").then(snapshot => {
+    const months = new Set();
+    snapshot.forEach(userSnap => {
+      Object.keys(userSnap.val()).forEach(month => months.add(month));
+    });
+    const sortedMonths = Array.from(months).sort().reverse();
+    sortedMonths.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m;
+      opt.textContent = m;
+      monthSelect.appendChild(opt);
+    });
+    if (sortedMonths.length > 0) {
+      monthSelect.value = sortedMonths[0];
+      loadLeaderboard(rankMode.value);
+    }
+  });
+
+  monthSelect.addEventListener("change", () => loadLeaderboard(rankMode.value));
+  rankMode.addEventListener("change", () => loadLeaderboard(rankMode.value));
+
   sendMessageBtn.addEventListener("click", () => {
     const name = messageName.value;
     const text = messageInput.value.trim();
@@ -136,7 +124,6 @@ function init() {
     });
   }
 
-  // 擁抱功能
   sendHugBtn.addEventListener("click", () => {
     const from = hugFrom.value;
     const to = hugTo.value;
@@ -153,7 +140,15 @@ function init() {
         countRef.set(count + 1);
         hugMessage.value = "";
         updateHugData();
-        confetti();
+
+        // ❤️ 擁抱專用愛心動畫
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 },
+          shapes: ['circle'],
+          colors: ['#ff5c8d', '#ff3366', '#ff99aa']
+        });
       });
     });
   });
@@ -179,7 +174,6 @@ function init() {
     });
   }
 
-  // 排行榜邏輯
   function loadLeaderboard(mode) {
     const selectedMonth = document.getElementById("monthSelect").value;
     const today = new Date().toISOString().slice(0, 10);
@@ -192,8 +186,8 @@ function init() {
       snapshot.forEach(userSnap => {
         const name = userSnap.key;
         const months = userSnap.val();
-
         let total = 0;
+
         if (mode === "month" && months[selectedMonth]) {
           total = months[selectedMonth].total || 0;
         } else if (mode === "week") {
@@ -224,7 +218,6 @@ function init() {
         table.appendChild(tr);
       });
 
-      // 圖表
       if (myChart) myChart.destroy();
       const ctx = document.getElementById("chart").getContext("2d");
       myChart = new Chart(ctx, {
