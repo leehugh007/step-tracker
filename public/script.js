@@ -104,14 +104,19 @@ function init() {
     if (!name || !text) return alert("請選擇名字並輸入訊息");
     saveName("messageName");
 
+    const today = new Date().toISOString().slice(0, 10);
     const msgRef = db.ref(`messages/${today}`).push();
     msgRef.set({ 
       name, 
       text, 
       timestamp: Date.now()
     }).then(() => {
+      console.log("✅ 消息已發送：", { name, text });
       messageInput.value = "";
       loadMessages();
+    }).catch(error => {
+      console.error("❌ 發送消息時出錯：", error);
+      alert("發送消息時出錯，請稍後再試");
     });
   });
 
@@ -335,6 +340,21 @@ function sendMessage() {
   storeMessage(name, message, timestamp)
     .then(() => {
       console.log('消息發送成功');
+      
+      // 如果是休總發的消息，自動回覆
+      if (name === '休總') {
+        // 延遲一下再發送休總的回覆
+        setTimeout(() => {
+          const responseText = generateXiuZongResponse(message);
+          storeMessage('休總', responseText, Date.now())
+            .then(() => {
+              console.log('休總回覆成功');
+            })
+            .catch(error => {
+              console.error('休總回覆失敗：', error);
+            });
+        }, 1000);
+      }
     })
     .catch(error => {
       console.error('發送消息時出錯：', error);
