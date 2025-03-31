@@ -151,8 +151,7 @@ function init() {
           
           const text = document.createElement('span');
           text.className = message.name === '休總' ? 'xiuzong-text' : '';
-          const cleanText = (message.text || '').replace(/[\n\r]/g, ' ');
-          text.textContent = ': ' + cleanText;
+          text.textContent = ': ' + (message.text || '').replace(/[\n\r]+/g, ' ');
           
           messageContent.appendChild(icon);
           messageContent.appendChild(name);
@@ -292,85 +291,42 @@ function shootHearts() {
 }
 
 function generateXiuZongResponse(userMessage) {
+  // 檢查是否在挑戰或玩笑
+  if (userMessage.includes('挑戰') || userMessage.includes('玩笑')) {
+    return '慧蘭，你這是在跟我挑戰嗎？挑戰我教練的耐心？哈哈！開玩笑啦，我知道你一定也是想達成健康目標才會有這樣的動力！';
+  }
+
+  // 檢查是否提到肚子餓
+  if (userMessage.includes('肚子') && (userMessage.includes('餓') || userMessage.includes('吃'))) {
+    return '慧蘭，你這是在找藉口嗎！不要用肚子餓當作吃冰淇淋的藉口，要控制住自己的食慾才能保持健康啊！要不然等你餓到...';
+  }
+
   // 關鍵詞匹配
   const keywords = {
-    '垃圾食品': [
-      '哼！又在吃垃圾食品？',
-      '均衡飲食才是王道。',
-      '下次帶你吃健康的！'
-    ],
-    '不想動': [
-      '又在找藉口？',
-      '運動對身體很重要！',
-      '要我陪你走走嗎？'
-    ],
-    '好累': [
-      '累？這就不行了？',
-      '慢慢來，別太勉強。',
-      '需要我幫你規劃嗎？'
-    ],
-    '吃': [
-      '又在吃？',
-      '記得要均衡！',
-      '試試健康餐如何？'
-    ],
-    '步': [
-      '就這樣而已？',
-      '持之以恆很重要！',
-      '下次一起走！'
-    ],
-    '沒動力': [
-      '這麼快就放棄？',
-      '設定目標，慢慢來！',
-      '我會看著你的！'
-    ],
-    '坐': [
-      '一坐就想吃？',
-      '起來動一動！',
-      '要不要一起走走？'
-    ],
-    '肚子': [
-      '餓了？',
-      '控制食慾很重要！',
-      '運動完再吃！'
-    ]
+    '垃圾食品': '哼！又在吃垃圾食品？雖然偶爾放縱可以理解，但要記得均衡飲食才是王道。下次帶你去吃些健康的，別老是吃這些。',
+    '不想動': '又在找藉口偷懶了？適度運動對身體和心理健康都很重要，你應該比誰都清楚。要我陪你走走嗎？反正我剛好也想運動了。',
+    '好累': '累？累個頭啊！這點挑戰就想放棄了嗎？要循序漸進，別一開始就給自己太大壓力，慢慢來比較快。需要的話...我可以幫你規劃一個適合的訓練計劃。',
+    '吃': '哼！又在吃什麼了？就你最會吃！記得要均衡營養，不是說吃得多就好。要不要試試我推薦的健康餐？味道還不錯。',
+    '步': '就這樣而已？還想成為運動達人？不過...能持之以恆地走也是不錯的開始。下次一起走吧！我會盯著你的進度。',
+    '沒動力': '沒動力？這麼快就想放棄了嗎？真是讓人失望！設定一個合理的目標，然後一步一步朝著它前進。我會在旁邊看著你的，別讓我失望啊！',
+    '坐': '哼！一坐下來就想吃東西？這樣怎麼行！與其坐著發呆，不如起來動一動。要不要跟我一起去運動？剛好我也想出去走走。'
   };
 
-  // 預設回覆
-  const defaultResponses = [
-    [
-      '又來了？',
-      '保持規律很重要！',
-      '別想偷懶！'
-    ],
-    [
-      '怎麼了？',
-      '保持好習慣！',
-      '需要指導找我！'
-    ],
-    [
-      '哼！',
-      '既然來了就認真點！',
-      '我會關注你的！'
-    ]
-  ];
-
   // 根據關鍵詞匹配回覆
-  let response = null;
-  for (const [keyword, replies] of Object.entries(keywords)) {
+  for (const [keyword, response] of Object.entries(keywords)) {
     if (userMessage.includes(keyword)) {
-      response = replies;
-      break;
+      return response;
     }
   }
 
-  // 如果沒有匹配到關鍵詞，隨機選擇一個預設回覆
-  if (!response) {
-    response = defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
-  }
+  // 預設回覆
+  const defaultResponses = [
+    '哼，又來打擾我了嗎？既然來了，就好好聽我說：保持規律的運動和健康的飲食才是王道。我會關注你的進度，別想偷懶！',
+    '什麼事啊？這麼沒幹勁的樣子可不行！記得保持良好的生活習慣，這是最基本的。需要指導的話...哼，我勉強可以教你一下。',
+    '真是個麻煩的傢伙...不過既然你這麼認真，我也不能不管你。加油吧！我會一直看著你的成長。'
+  ];
 
-  // 使用空格連接回覆的各個部分
-  return response.join(' ');
+  return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
 }
 
 function sendMessage() {
