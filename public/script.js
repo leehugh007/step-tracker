@@ -322,6 +322,11 @@ function generateXiuZongResponse(userMessage) {
       '沒動力？這麼快就想放棄了嗎？真是讓人失望！',
       '設定一個合理的目標，然後一步一步朝著它前進。',
       '...我會在旁邊看著你的，別讓我失望啊！'
+    ],
+    '坐': [
+      '哼！一坐下來就想吃東西？這樣怎麼行！',
+      '與其坐著發呆，不如起來動一動。',
+      '...要不要跟我一起去運動？剛好我也想出去走走。'
     ]
   };
 
@@ -358,7 +363,8 @@ function generateXiuZongResponse(userMessage) {
     response = defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
   }
 
-  return response.join(' ');
+  // 使用換行符號來連接回覆的各個部分
+  return response.join('\n');
 }
 
 function sendMessage() {
@@ -366,6 +372,8 @@ function sendMessage() {
   const nameSelect = document.getElementById('nameSelect');
   const text = messageInput.value.trim();
   const name = nameSelect.value;
+  const today = new Date().toISOString().slice(0, 10);
+  const db = window.firebaseDatabase;
 
   if (text && name) {
     const message = {
