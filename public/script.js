@@ -294,6 +294,102 @@ function shootHearts() {
   }
 }
 
+function generateXiuZongResponse(userMessage) {
+  // 關鍵詞匹配
+  const keywords = {
+    '不想動': [
+      '哼，又在找藉口偷懶了？',
+      '適度運動能提升你的精神狀態和工作效率。',
+      '...要不要我陪你走走？反正我剛好也要運動。'
+    ],
+    '好累': [
+      '累？就你這體能還想挑戰我？',
+      '注意適度休息，但別讓身體習慣懶散。',
+      '需要的話...我可以調整一下你的運動計劃。'
+    ],
+    '吃': [
+      '就知道吃！...等等，讓我看看是什麼。',
+      '均衡的營養攝入對身體至關重要。',
+      '下次要不要一起吃個健康午餐？我知道一家不錯的店。'
+    ],
+    '沒動力': [
+      '哼，就這點挫折就要放棄了？',
+      '設定明確的目標，並且循序漸進是保持動力的關鍵。',
+      '...我會關注你的進度的，別讓我失望。'
+    ]
+  };
+
+  // 預設回覆
+  const defaultResponses = [
+    [
+      '哼，又在說些什麼無聊的話...',
+      '保持規律的作息和運動才是健康的基礎。',
+      '...我會盯著你的，別想偷懶。'
+    ],
+    [
+      '這麼簡單的事情還需要我來教你嗎？',
+      '建立良好的生活習慣比一時的衝動更重要。',
+      '需要幫忙的話...哼，勉強可以指導你一下。'
+    ],
+    [
+      '真是個麻煩的傢伙...',
+      '要達到目標就要有持之以恆的決心。',
+      '...我會在旁邊看著你的，加油吧。'
+    ]
+  ];
+
+  // 根據關鍵詞匹配回覆
+  let response = null;
+  for (const [keyword, replies] of Object.entries(keywords)) {
+    if (userMessage.includes(keyword)) {
+      response = replies;
+      break;
+    }
+  }
+
+  // 如果沒有匹配到關鍵詞，隨機選擇一個預設回覆
+  if (!response) {
+    response = defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+  }
+
+  return response.join(' ');
+}
+
+function sendMessage() {
+  const messageInput = document.getElementById('messageInput');
+  const nameSelect = document.getElementById('nameSelect');
+  const text = messageInput.value.trim();
+  const name = nameSelect.value;
+
+  if (text && name) {
+    const message = {
+      name: name,
+      text: text,
+      timestamp: Date.now()
+    };
+
+    // 如果是休總發的消息，自動回覆
+    if (name === '休總') {
+      // 先發送用戶的消息
+      db.ref(`messages/${today}`).push(message);
+      
+      // 延遲一下再發送休總的回覆
+      setTimeout(() => {
+        const response = {
+          name: '休總',
+          text: generateXiuZongResponse(text),
+          timestamp: Date.now()
+        };
+        db.ref(`messages/${today}`).push(response);
+      }, 1000);
+    } else {
+      db.ref(`messages/${today}`).push(message);
+    }
+
+    messageInput.value = '';
+  }
+}
+
 document.readyState === "loading"
   ? document.addEventListener("DOMContentLoaded", init)
   : init();
