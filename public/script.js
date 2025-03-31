@@ -290,45 +290,6 @@ function shootHearts() {
   }
 }
 
-function generateXiuZongResponse(userMessage) {
-  // 檢查是否在挑戰或玩笑
-  if (userMessage.includes('挑戰') || userMessage.includes('玩笑')) {
-    return '慧蘭，你這是在跟我挑戰嗎？挑戰我教練的耐心？哈哈！開玩笑啦，我知道你一定也是想達成健康目標才會有這樣的動力！';
-  }
-
-  // 檢查是否提到肚子餓
-  if (userMessage.includes('肚子') && (userMessage.includes('餓') || userMessage.includes('吃'))) {
-    return '慧蘭，你這是在找藉口嗎！不要用肚子餓當作吃冰淇淋的藉口，要控制住自己的食慾才能保持健康啊！要不然等你餓到...';
-  }
-
-  // 關鍵詞匹配
-  const keywords = {
-    '垃圾食品': '哼！又在吃垃圾食品？雖然偶爾放縱可以理解，但要記得均衡飲食才是王道。下次帶你去吃些健康的，別老是吃這些。',
-    '不想動': '又在找藉口偷懶了？適度運動對身體和心理健康都很重要，你應該比誰都清楚。要我陪你走走嗎？反正我剛好也想運動了。',
-    '好累': '累？累個頭啊！這點挑戰就想放棄了嗎？要循序漸進，別一開始就給自己太大壓力，慢慢來比較快。需要的話...我可以幫你規劃一個適合的訓練計劃。',
-    '吃': '哼！又在吃什麼了？就你最會吃！記得要均衡營養，不是說吃得多就好。要不要試試我推薦的健康餐？味道還不錯。',
-    '步': '就這樣而已？還想成為運動達人？不過...能持之以恆地走也是不錯的開始。下次一起走吧！我會盯著你的進度。',
-    '沒動力': '沒動力？這麼快就想放棄了嗎？真是讓人失望！設定一個合理的目標，然後一步一步朝著它前進。我會在旁邊看著你的，別讓我失望啊！',
-    '坐': '哼！一坐下來就想吃東西？這樣怎麼行！與其坐著發呆，不如起來動一動。要不要跟我一起去運動？剛好我也想出去走走。'
-  };
-
-  // 根據關鍵詞匹配回覆
-  for (const [keyword, response] of Object.entries(keywords)) {
-    if (userMessage.includes(keyword)) {
-      return response;
-    }
-  }
-
-  // 預設回覆
-  const defaultResponses = [
-    '哼，又來打擾我了嗎？既然來了，就好好聽我說：保持規律的運動和健康的飲食才是王道。我會關注你的進度，別想偷懶！',
-    '什麼事啊？這麼沒幹勁的樣子可不行！記得保持良好的生活習慣，這是最基本的。需要指導的話...哼，我勉強可以教你一下。',
-    '真是個麻煩的傢伙...不過既然你這麼認真，我也不能不管你。加油吧！我會一直看著你的成長。'
-  ];
-
-  return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
-}
-
 function sendMessage() {
   const messageInput = document.getElementById('messageInput');
   const nameSelect = document.getElementById('nameSelect');
@@ -350,20 +311,97 @@ function sendMessage() {
       db.ref(`messages/${today}`).push(message).then(() => {
         // 延遲一下再發送休總的回覆
         setTimeout(() => {
-          const response = {
-            name: '休總',
-            text: generateXiuZongResponse(text),
-            timestamp: Date.now()
-          };
-          db.ref(`messages/${today}`).push(response);
+          const responseText = generateXiuZongResponse(text);
+          // 如果回覆超過100個字符，分段發送
+          if (responseText.length > 100) {
+            const parts = Math.ceil(responseText.length / 100);
+            for (let i = 0; i < parts; i++) {
+              const part = responseText.slice(i * 100, (i + 1) * 100);
+              setTimeout(() => {
+                const response = {
+                  name: '休總',
+                  text: part + (i === parts - 1 ? '' : '...'),
+                  timestamp: Date.now() + i
+                };
+                db.ref(`messages/${today}`).push(response);
+              }, i * 500); // 每段之間間隔0.5秒
+            }
+          } else {
+            const response = {
+              name: '休總',
+              text: responseText,
+              timestamp: Date.now()
+            };
+            db.ref(`messages/${today}`).push(response);
+          }
         }, 1000);
       });
     } else {
-      db.ref(`messages/${today}`).push(message);
+      // 如果不是休總的消息，也需要處理長消息
+      if (text.length > 100) {
+        const parts = Math.ceil(text.length / 100);
+        for (let i = 0; i < parts; i++) {
+          const part = text.slice(i * 100, (i + 1) * 100);
+          setTimeout(() => {
+            const partMessage = {
+              name: name,
+              text: part + (i === parts - 1 ? '' : '...'),
+              timestamp: Date.now() + i
+            };
+            db.ref(`messages/${today}`).push(partMessage);
+          }, i * 500);
+        }
+      } else {
+        db.ref(`messages/${today}`).push(message);
+      }
     }
 
     messageInput.value = '';
   }
+}
+
+function generateXiuZongResponse(userMessage) {
+  // 檢查是否在挑戰或玩笑
+  if (userMessage.includes('挑戰') || userMessage.includes('玩笑')) {
+    return '慧蘭，你這是在跟我挑戰嗎？挑戰我教練的耐心？哈哈！開玩笑啦，我知道你一定也是想達成健康目標才會有這樣的動力！讓我們一起努力吧！';
+  }
+
+  // 檢查是否提到冰淇淋或冰
+  if (userMessage.includes('冰') || userMessage.includes('冰淇淋')) {
+    return '慧蘭，看來你對冰淇淋有著無法抗拒的渴望啊！想要吃冰的同時又想保持健康，我給你一個建議吧：你可以考慮選擇優格冰淇淋或者是低脂的冰品，搭配新鮮水果會更健康美味哦！記住，適量享受才是王道！';
+  }
+
+  // 檢查是否提到肚子餓
+  if (userMessage.includes('肚子') && (userMessage.includes('餓') || userMessage.includes('吃'))) {
+    return '慧蘭，你這是在找藉口嗎！不要用肚子餓當作吃零食的藉口，要控制住自己的食慾才能保持健康啊！如果真的餓了，我建議你可以吃些健康的點心，比如水果或是無糖優格，既能滿足口慾又不會影響健康！';
+  }
+
+  // 關鍵詞匹配
+  const keywords = {
+    '垃圾食品': '慧蘭，我看到你又在吃垃圾食品了？雖然偶爾放縱可以理解，但要記得均衡飲食才是王道。不如我帶你去吃些健康的美食吧，保證比垃圾食品還要美味！記住，健康的身體才能享受更多美好的事物！',
+    '不想動': '又在找藉口偷懶了？適度運動對身體和心理健康都很重要，你應該比誰都清楚。要不要我陪你一起運動？剛好我也想活動一下，而且有伴會更有動力！記住，堅持運動的人最迷人！',
+    '好累': '累？就這樣就想放棄了嗎？我知道一開始會很辛苦，但是要循序漸進，慢慢來比較快。需要的話，我可以幫你規劃一個適合的訓練計劃，讓你能夠持續進步而不會太勉強。堅持下去，你一定會看到不一樣的自己！',
+    '吃': '哼！又在想著吃什麼了？我知道你最會吃！不過要記得均衡營養，不是說吃得多就好。我知道幾家不錯的健康餐廳，要不要改天一起去試試？保證既美味又健康！',
+    '步': '就這樣的步數就滿足了？還想成為運動達人呢！不過...能持之以恆地走路也是很好的開始。下次我們一起走吧，我會全程盯著你的進度，確保你不會偷懶！',
+    '沒動力': '沒動力？這麼快就想放棄了嗎？真是讓人失望！不過沒關係，我們一起設定一個合理的目標，然後一步一步朝著它前進。我會一直在旁邊看著你，別讓我失望啊！記住，堅持的人最帥氣！',
+    '坐': '哼！一坐下來就想吃東西？這樣可不行！與其坐著發呆，不如起來動一動。要不要跟我一起去運動？剛好我也想出去走走，順便指導你一下正確的運動方式！'
+  };
+
+  // 根據關鍵詞匹配回覆
+  for (const [keyword, response] of Object.entries(keywords)) {
+    if (userMessage.includes(keyword)) {
+      return response;
+    }
+  }
+
+  // 預設回覆
+  const defaultResponses = [
+    '哼，又來打擾我了嗎？既然來了，就好好聽我說：保持規律的運動和健康的飲食才是王道。我會持續關注你的進度，別想著偷懶！記住，健康的生活方式才能帶來真正的快樂！',
+    '什麼事啊？看你這麼沒幹勁的樣子可不行！保持良好的生活習慣是最基本的。需要指導的話...哼，我勉強可以教你一下。但是要記住，堅持才是最重要的！',
+    '真是個麻煩的傢伙...不過既然你這麼認真，我也不能不管你。加油吧！我會一直看著你的成長。相信我，堅持下去一定會看到更好的自己！'
+  ];
+
+  return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
 }
 
 document.readyState === "loading"
