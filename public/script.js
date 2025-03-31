@@ -118,46 +118,50 @@ function init() {
   function loadMessages() {
     const messageList = document.getElementById('messageList');
     messageList.innerHTML = '';
+    const today = new Date().toISOString().slice(0, 10);
+    const db = window.firebaseDatabase;
     
     db.ref(`messages/${today}`).on("value", snapshot => {
       messageList.innerHTML = '';
       if (snapshot.exists()) {
-        const messages = [];
+        // 收集所有消息片段
+        const messageSegments = {};
         snapshot.forEach(child => {
-          const message = child.val();
-          messages.push({
-            ...message,
-            key: child.key,
-            timestamp: message.timestamp || message.time
-          });
-        });
-        
-        messages.sort((a, b) => a.timestamp - b.timestamp);
-        
-        // 合并相同发送者的连续消息
-        const mergedMessages = [];
-        let currentMessage = null;
-        
-        messages.forEach(message => {
-          if (currentMessage && 
-              currentMessage.name === message.name && 
-              message.text.endsWith('...')) {
-            // 如果是同一个发送者的连续消息，合并文本
-            currentMessage.text = currentMessage.text.replace(/\.{3}$/, '') + message.text;
-          } else {
-            if (currentMessage) {
-              mergedMessages.push(currentMessage);
+          const segment = child.val();
+          // 如果消息有 messageId，说明是分段消息
+          if (segment.messageId) {
+            if (!messageSegments[segment.messageId]) {
+              messageSegments[segment.messageId] = [];
             }
-            currentMessage = {...message};
+            messageSegments[segment.messageId].push(segment);
+          } else {
+            // 如果没有 messageId，说明是旧消息或单段消息
+            messageSegments[child.key] = [{
+              ...segment,
+              messageId: child.key,
+              segmentIndex: 0,
+              totalSegments: 1
+            }];
           }
         });
         
-        if (currentMessage) {
-          mergedMessages.push(currentMessage);
-        }
+        // 合并和排序消息
+        const messages = Object.values(messageSegments).map(segments => {
+          // 按照片段索引排序
+          segments.sort((a, b) => a.segmentIndex - b.segmentIndex);
+          // 合并文本
+          return {
+            name: segments[0].name,
+            text: segments.map(s => s.text).join(''),
+            timestamp: segments[0].timestamp
+          };
+        });
         
-        // 显示合并后的消息
-        mergedMessages.forEach(message => {
+        // 按时间戳排序
+        messages.sort((a, b) => a.timestamp - b.timestamp);
+        
+        // 显示消息
+        messages.forEach(message => {
           const li = document.createElement('li');
           li.className = message.name === '休總' ? 'list-group-item xiuzong' : 'list-group-item';
           
@@ -174,7 +178,7 @@ function init() {
           
           const text = document.createElement('span');
           text.className = message.name === '休總' ? 'xiuzong-text' : '';
-          text.textContent = ': ' + (message.text || '').replace(/[\n\r]+/g, ' ');
+          text.textContent = ': ' + message.text;
           
           messageContent.appendChild(icon);
           messageContent.appendChild(name);
