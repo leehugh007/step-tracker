@@ -151,7 +151,7 @@ function init() {
           
           const text = document.createElement('span');
           text.className = message.name === '休總' ? 'xiuzong-text' : '';
-          text.textContent = ': ' + message.text;
+          text.textContent = ': ' + (message.text || '');
           
           messageContent.appendChild(icon);
           messageContent.appendChild(name);
@@ -293,54 +293,54 @@ function shootHearts() {
 function generateXiuZongResponse(userMessage) {
   // 關鍵詞匹配
   const keywords = {
-    '步': [
-      '哼，才走這麼一點路就在這邊炫耀了？',
-      '保持這個步數，慢慢增加才是正確的方式。',
-      '...下次要不要一起去運動？我剛好也想散步。'
+    '垃圾食品': [
+      '哼！又在吃垃圾食品？',
+      '要記得均衡飲食，適量就好。',
+      '下次帶你去吃健康的！'
     ],
     '不想動': [
-      '哼，又在找藉口偷懶了嗎？',
-      '適度運動對身體和心理健康都很重要。',
-      '要我陪你走走嗎？...只是剛好順路而已！'
+      '又在找藉口偷懶？',
+      '適度運動對身體很重要！',
+      '要我陪你走走嗎？'
     ],
     '好累': [
-      '就這樣就累了？體能也太差了吧！',
-      '要循序漸進，別一開始就勉強自己。',
-      '...需要的話，我可以幫你規劃訓練計劃。'
+      '這樣就累了？',
+      '循序漸進，別太勉強。',
+      '需要我幫你規劃嗎？'
     ],
     '吃': [
-      '又在吃那些不健康的食物了嗎？',
-      '均衡飲食很重要，但偶爾放縱一下也沒關係。',
-      '下次帶你去吃健康的美食...只是順便啦！'
+      '又在吃什麼了？',
+      '記得要均衡營養！',
+      '要不要試試健康餐？'
     ],
-    '垃圾食品': [
-      '看來今天的你又在享受那些美味的垃圾食品了啊！',
-      '但是記得，偶爾吃一些也沒關係，只要能控制好平衡，保持健康的生活方式就好。',
-      '...要不要下次一起去吃些健康的食物？我知道幾家不錯的店。'
+    '步': [
+      '才走這麼一點？',
+      '繼續保持，慢慢來！',
+      '下次一起走吧！'
     ],
     '沒動力': [
-      '哼，這麼快就想放棄了嗎？',
-      '設定合理的目標，一步一步來才是王道。',
-      '...我會幫你加油的，別讓我失望啊！'
+      '這就想放棄了？',
+      '設定目標，一步一步來！',
+      '我會盯著你的！'
     ]
   };
 
   // 預設回覆
   const defaultResponses = [
     [
-      '哼，又在說些無聊的話...',
-      '堅持運動和健康飲食才是最重要的。',
-      '...我會關注你的進度，別想偷懶！'
+      '哼，又來了...',
+      '保持規律很重要！',
+      '我會關注你的！'
     ],
     [
-      '這種小事也要來問我嗎？',
-      '保持良好的生活習慣比一時的衝動更重要。',
-      '需要指導的話...哼，我勉強可以教你一下。'
+      '什麼事啊？',
+      '記得保持好習慣！',
+      '需要指導找我！'
     ],
     [
-      '真是個麻煩的傢伙...',
-      '要達到目標就要有持之以恆的決心。',
-      '...我會在旁邊看著你的，加油吧！'
+      '真是麻煩...',
+      '堅持就會有收穫！',
+      '加油，看好你！'
     ]
   ];
 
@@ -358,7 +358,8 @@ function generateXiuZongResponse(userMessage) {
     response = defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
   }
 
-  return response.join(' ');
+  // 確保每條消息不會太長
+  return response.map(text => text.slice(0, 100)).join(' ');
 }
 
 function sendMessage() {
@@ -368,9 +369,11 @@ function sendMessage() {
   const name = nameSelect.value;
 
   if (text && name) {
+    // 限制消息長度
+    const limitedText = text.slice(0, 100);
     const message = {
       name: name,
-      text: text,
+      text: limitedText,
       timestamp: Date.now()
     };
 
@@ -382,7 +385,7 @@ function sendMessage() {
         setTimeout(() => {
           const response = {
             name: '休總',
-            text: generateXiuZongResponse(text),
+            text: generateXiuZongResponse(limitedText),
             timestamp: Date.now()
           };
           db.ref(`messages/${today}`).push(response);
