@@ -116,96 +116,56 @@ function init() {
   });
 
   function loadMessages() {
-    console.log('=== DEBUG: loadMessages 開始執行 ===');
-    
-    // 1. 檢查 messageList 元素
     const messageList = document.getElementById('messageList');
-    console.log('DEBUG: messageList 元素:', messageList);
-    
-    if (!messageList) {
-      console.error('錯誤：找不到 messageList 元素！');
-      return;
-    }
-    
-    // 2. 獲取數據庫引用
-    console.log('DEBUG: 當前日期:', today);
-    const messagesRef = db.ref('messages/' + today);
-    console.log('DEBUG: 數據庫路徑:', 'messages/' + today);
-    
-    // 3. 監聽數據變化
-    messagesRef.on('value', (snapshot) => {
-      console.log('=== DEBUG: 收到數據庫更新 ===');
-      console.log('DEBUG: snapshot 存在:', snapshot.exists());
-      
-      // 清空消息列表
+    messageList.innerHTML = '';
+
+    db.ref(`messages/${today}`).on("value", snapshot => {
       messageList.innerHTML = '';
-      
-      if (!snapshot.exists()) {
-        console.log('提示：今天還沒有任何消息');
-        return;
-      }
-      
-      // 4. 處理消息數據
       const messages = [];
-      snapshot.forEach((child) => {
+      snapshot.forEach(child => {
         const message = child.val();
-        console.log('DEBUG: 處理單條消息:', {
-          name: message.name,
-          text: message.text,
-          isXiuZong: message.name === '休總',
-          timestamp: new Date(message.timestamp).toLocaleString()
+        messages.push({
+          ...message,
+          key: child.key,
+          timestamp: message.timestamp || message.time,
+          isXiuZong: message.name === "休總"
         });
-        messages.push(message);
       });
       
-      // 5. 排序消息
       messages.sort((a, b) => a.timestamp - b.timestamp);
-      console.log('DEBUG: 排序後的消息數量:', messages.length);
-      
-      // 6. 創建消息元素
-      messages.forEach((message) => {
-        const isXiuZong = message.name === '休總';
-        console.log('DEBUG: 創建消息元素:', {
-          name: message.name,
-          isXiuZong: isXiuZong
-        });
-        
+
+      messages.forEach(message => {
         const li = document.createElement('li');
-        li.className = isXiuZong ? 'list-group-item xiuzong' : 'list-group-item';
+        li.className = `list-group-item${message.isXiuZong ? ' xiuzong' : ''}`;
         
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         
         const icon = document.createElement('span');
-        icon.className = isXiuZong ? 'message-icon xiuzong-icon' : 'message-icon';
-        icon.textContent = isXiuZong ? '🎩' : '👤';
+        icon.className = message.isXiuZong ? 'hat-icon' : 'message-icon';
+        icon.textContent = message.isXiuZong ? '🎩' : '👤';
+        
+        const textContainer = document.createElement('div');
+        textContainer.className = `text-container${message.isXiuZong ? ' xiuzong-text' : ''}`;
         
         const name = document.createElement('strong');
-        name.className = isXiuZong ? 'xiuzong-name' : '';
+        name.className = message.isXiuZong ? 'xiuzong-name' : '';
         name.textContent = message.name;
         
         const text = document.createElement('span');
-        text.className = isXiuZong ? 'xiuzong-text' : '';
-        text.textContent = message.text;
+        text.className = message.isXiuZong ? 'xiuzong-text' : '';
+        text.textContent = `: ${message.text}`;
+        
+        textContainer.appendChild(name);
+        textContainer.appendChild(text);
         
         messageContent.appendChild(icon);
-        messageContent.appendChild(name);
-        messageContent.appendChild(document.createTextNode(': '));
-        messageContent.appendChild(text);
-        
+        messageContent.appendChild(textContainer);
         li.appendChild(messageContent);
-        messageList.appendChild(li);
         
-        console.log('DEBUG: 消息元素已添加，類名:', {
-          li: li.className,
-          icon: icon.className,
-          name: name.className,
-          text: text.className
-        });
+        messageList.appendChild(li);
       });
-      
-      // 7. 滾動到底部
-      console.log('=== DEBUG: 消息加載完成 ===');
+
       messageList.scrollTop = messageList.scrollHeight;
     });
   }
