@@ -122,12 +122,14 @@ function init() {
     const db = window.firebaseDatabase;
     
     db.ref(`messages/${today}`).on("value", snapshot => {
+      console.log('Raw Firebase data:', snapshot.val());
       messageList.innerHTML = '';
       if (snapshot.exists()) {
         // 收集所有消息片段
         const messageSegments = {};
         snapshot.forEach(child => {
           const segment = child.val();
+          console.log('Processing segment:', segment);
           // 如果消息有 messageId，说明是分段消息
           if (segment.messageId) {
             if (!messageSegments[segment.messageId]) {
@@ -145,20 +147,25 @@ function init() {
           }
         });
         
+        console.log('Collected message segments:', messageSegments);
+        
         // 合并和排序消息
         const messages = Object.values(messageSegments).map(segments => {
           // 按照片段索引排序
           segments.sort((a, b) => a.segmentIndex - b.segmentIndex);
           // 合并文本
-          return {
+          const mergedMessage = {
             name: segments[0].name,
             text: segments.map(s => s.text).join(''),
             timestamp: segments[0].timestamp
           };
+          console.log('Merged message:', mergedMessage);
+          return mergedMessage;
         });
         
         // 按时间戳排序
         messages.sort((a, b) => a.timestamp - b.timestamp);
+        console.log('Final sorted messages:', messages);
         
         // 显示消息
         messages.forEach(message => {
@@ -179,6 +186,7 @@ function init() {
           const text = document.createElement('span');
           text.className = message.name === '休總' ? 'xiuzong-text' : '';
           text.textContent = ': ' + message.text;
+          console.log('Displaying message:', message.name, message.text);
           
           messageContent.appendChild(icon);
           messageContent.appendChild(name);
