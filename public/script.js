@@ -116,96 +116,61 @@ function init() {
   });
 
   function loadMessages() {
-    const messageList = document.getElementById('messageList');
-    messageList.innerHTML = '';
-
-    db.ref(`messages/${today}`).on("value", snapshot => {
-      messageList.innerHTML = '';
-      const messageSegments = [];
-      const completeMessages = new Map(); // 用于存储完整的消息
-
-      // 首先收集所有消息段
-      snapshot.forEach(child => {
-        const segment = child.val();
-        messageSegments.push({
-          ...segment,
-          key: child.key
-        });
-      });
-
-      // 按照 messageId 分组并合并消息段
-      messageSegments.forEach(segment => {
-        if (segment.messageId) {
-          if (!completeMessages.has(segment.messageId)) {
-            completeMessages.set(segment.messageId, {
-              name: segment.name,
-              timestamp: segment.timestamp,
-              segments: new Array(segment.totalSegments).fill(null),
-              isXiuZong: segment.name === "休總"
-            });
+    const messagesRef = db.ref(`messages/${today}`);
+    
+    messagesRef.on("value", (snapshot) => {
+      const data = snapshot.val() || {};
+      const messages = Object.values(data);
+      
+      // Group message segments by messageId
+      const messageGroups = {};
+      messages.forEach(msg => {
+        if (msg.messageId) {
+          if (!messageGroups[msg.messageId]) {
+            messageGroups[msg.messageId] = [];
           }
-          const message = completeMessages.get(segment.messageId);
-          message.segments[segment.segmentIndex] = segment.text;
+          messageGroups[msg.messageId][msg.segmentIndex] = msg;
         } else {
-          // 处理旧格式的消息（没有分段的）
-          completeMessages.set(segment.key, {
-            name: segment.name,
-            text: segment.text,
-            timestamp: segment.timestamp || segment.time,
-            isXiuZong: segment.name === "休總"
-          });
+          // Handle non-segmented messages
+          messageGroups[Date.now() + '_' + Math.random()] = [msg];
         }
       });
 
-      // 将 Map 转换为数组并合并分段
-      const messages = Array.from(completeMessages.values()).map(message => {
-        if (message.segments) {
-          // 合并分段的消息
-          return {
-            ...message,
-            text: message.segments.join('')
-          };
-        }
-        return message;
+      // Merge segments and sort messages
+      const mergedMessages = Object.values(messageGroups).map(segments => {
+        if (segments.length === 1) return segments[0];
+        
+        // Merge segments
+        const baseMsg = {...segments[0]};
+        baseMsg.text = segments
+          .sort((a, b) => a.segmentIndex - b.segmentIndex)
+          .map(s => s.text)
+          .join('');
+        return baseMsg;
       });
 
-      // 按时间戳排序
-      messages.sort((a, b) => a.timestamp - b.timestamp);
-
-      // 显示消息
-      messages.forEach(message => {
-        const li = document.createElement('li');
-        li.className = `list-group-item${message.isXiuZong ? ' xiuzong' : ''}`;
-        
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
-        
-        const icon = document.createElement('span');
-        icon.className = message.isXiuZong ? 'hat-icon' : 'message-icon';
-        icon.textContent = message.isXiuZong ? '��' : '👤';
-        
-        const textContainer = document.createElement('div');
-        textContainer.className = `text-container${message.isXiuZong ? ' xiuzong-text' : ''}`;
-        
-        const name = document.createElement('strong');
-        name.className = message.isXiuZong ? 'xiuzong-name' : '';
-        name.textContent = message.name;
-        
-        const text = document.createElement('span');
-        text.className = message.isXiuZong ? 'xiuzong-text' : '';
-        text.textContent = `: ${message.text}`;
-        
-        textContainer.appendChild(name);
-        textContainer.appendChild(text);
-        
-        messageContent.appendChild(icon);
-        messageContent.appendChild(textContainer);
-        li.appendChild(messageContent);
-        
-        messageList.appendChild(li);
+      // Sort by timestamp
+      const sortedMessages = mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
+      
+      // Clear and rebuild messages display
+      const messagesDiv = document.getElementById('messages');
+      messagesDiv.innerHTML = '';
+      
+      sortedMessages.forEach(msg => {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message';
+        messageElement.innerHTML = `
+          <div class="message-header">
+            <span class="name">${msg.name}</span>
+            <span class="time">${formatTime(msg.timestamp)}</span>
+          </div>
+          <div class="message-content">${msg.text}</div>
+        `;
+        messagesDiv.appendChild(messageElement);
       });
-
-      messageList.scrollTop = messageList.scrollHeight;
+      
+      // Scroll to bottom
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
   }
 
@@ -343,7 +308,6 @@ function sendMessage() {
 
   if (text && name) {
     const baseTimestamp = Date.now();
-    console.log('Sending message:', { name, text, timestamp: baseTimestamp });
     
     // 如果是休總發的消息，自動回覆
     if (name === '休總') {
@@ -352,7 +316,6 @@ function sendMessage() {
         // 延遲一下再發送休總的回覆
         setTimeout(() => {
           const responseText = generateXiuZongResponse(text);
-          console.log('Generated response:', responseText);
           storeMessage('休總', responseText, Date.now()).then(() => {
             console.log('Response stored successfully');
           }).catch(error => {
@@ -379,58 +342,22 @@ function storeMessage(name, text, timestamp) {
   const today = new Date().toISOString().slice(0, 10);
   const db = window.firebaseDatabase;
   
-  // 生成唯一的消息ID
-  const messageId = db.ref(`messages/${today}`).push().key;
-  console.log('Storing message with ID:', messageId, { name, text, timestamp });
+  // 直接存储完整消息，不进行分段
+  const messageData = {
+    name,
+    text,
+    timestamp
+  };
   
-  try {
-    // 将消息分段（每段最多100个字符）
-    const segments = [];
-    const segmentLength = 100;
-    const segmentCount = Math.ceil(text.length / segmentLength);
-    
-    console.log('Message details:', {
-      name,
-      text,
-      length: text.length,
-      segmentCount,
-      messageId
-    });
-    
-    // 即使消息长度小于100，也创建至少一个段
-    for (let i = 0; i < Math.max(1, segmentCount); i++) {
-      const start = i * segmentLength;
-      const end = Math.min((i + 1) * segmentLength, text.length);
-      const segmentText = text.slice(start, end);
-      
-      const segment = {
-        name,
-        text: segmentText,
-        timestamp: timestamp + i,  // 确保段按顺序排列
-        messageId,
-        segmentIndex: i,
-        totalSegments: Math.max(1, segmentCount)
-      };
-      
-      console.log(`Segment ${i + 1}/${segmentCount}:`, segment);
-      segments.push(segment);
-    }
-    
-    // 使用Promise.all确保所有段都存储完成
-    return Promise.all(segments.map(segment => {
-      const newRef = db.ref(`messages/${today}`).push();
-      console.log('Storing segment with key:', newRef.key);
-      return newRef.set(segment);
-    })).then(() => {
-      console.log('All segments stored successfully');
-    }).catch(error => {
-      console.error('Error storing segments:', error);
+  // 使用 set 而不是 push 来确保数据完整性
+  return db.ref(`messages/${today}`).push().set(messageData)
+    .then(() => {
+      console.log('Message stored successfully:', messageData);
+    })
+    .catch(error => {
+      console.error('Error storing message:', error);
       throw error;
     });
-  } catch (error) {
-    console.error('Error in storeMessage:', error);
-    return Promise.reject(error);
-  }
 }
 
 function generateXiuZongResponse(userMessage) {
@@ -439,30 +366,30 @@ function generateXiuZongResponse(userMessage) {
   
   // 冰淇淋相關
   if (userMessage.includes('冰') || userMessage.includes('冰淇淋')) {
-    response = '哼！又在想著吃冰淇淋了？雖然我理解你的渴望，但是要適可而止！如果真的很想吃，我建議你可以試試低脂優格冰淇淋，或者是自己做水果冰沙。這樣既能滿足你的慾望，又不會影響健康。記住，偶爾放縱可以，但要有節制！要不要我帶你去吃健康的甜點？我知道一家店的優格冰淇淋特別好吃，而且熱量比一般冰淇淋低很多。';
+    response = '別胡思亂想！要吃冰就得吃得健康！可以選擇低糖、低卡的冰品，或者自己製作水果冰棒，少吃一點但滿足口腹之慾。';
   }
   // 垃圾食品相關
   else if (userMessage.includes('垃圾') || userMessage.includes('零食') || userMessage.includes('餅乾')) {
-    response = '唉，你又在吃這些垃圾食品了？我真的很擔心你的健康啊！雖然這些東西吃起來很爽，但是對身體一點好處都沒有。不如我教你一些健康的零食選擇？像是無調味堅果、水果乾，或者是自製能量棒。這些不僅美味，還能補充身體需要的營養。如果你真的想吃零食，至少要選擇一些較健康的替代品，而不是一直吃這些空熱量的食物。要不要我幫你規劃一個健康的飲食計畫？';
+    response = '唉，你又在吃這些沒營養的東西！不如試試無調味堅果、水果乾，或者自製能量棒。健康零食也可以很美味！';
   }
   // 運動相關
   else if (userMessage.includes('不想動') || userMessage.includes('懶得動')) {
-    response = '哼！就知道你又在找藉口不想運動了！作為你的健康教練，我怎麼能允許你這樣偷懶？我知道運動確實需要一些意志力，但是為了健康，這點付出算什麼？要不這樣，我陪你一起運動如何？我可以根據你的體能狀況，設計一套適合你的運動計劃。從簡單的開始，慢慢增加強度。記住，堅持運動的人最有魅力！而且，我會一直在旁邊監督你，確保你不會半途而廢。';
+    response = '哼！就知道你又在找藉口！來吧，我陪你一起運動，從簡單的開始。堅持運動的人最有魅力！';
   }
   // 疲勞相關
   else if (userMessage.includes('好累') || userMessage.includes('沒力')) {
-    response = '累？就這樣就想放棄了嗎？身為你的教練，我不能接受這種藉口！不過...我也理解每個人都會有疲憊的時候。讓我看看你最近的作息和運動狀況，也許是你的訓練強度需要調整。適當的休息確實很重要，但不能因為一時的疲勞就放棄堅持。要不要我幫你重新規劃一下訓練計畫？我們可以先從較輕的運動開始，慢慢找回狀態。記住，真正的強者不是不會累，而是累了也能堅持下去！';
+    response = '累就要適當休息，但不能因此放棄！讓我幫你調整訓練計畫，找到最適合你的節奏。';
   }
   // 飲食相關
   else if (userMessage.includes('吃') || userMessage.includes('餓')) {
-    response = '又在想著吃啊？雖然我知道你很愛吃，但是要記得均衡營養才是王道！與其吃那些垃圾食品，不如讓我推薦幾家健康餐廳給你？那裡的食物不僅美味，還能確保你攝取足夠的營養。或者，我可以教你一些簡單的健康料理，這樣你在家也能做出美味又健康的餐點。記住，飲食習慣的改變需要時間，但只要堅持下去，你一定會看到不一樣的自己！要不要我陪你一起規劃一個健康的飲食計畫？';
+    response = '飲食要均衡，不是想吃什麼就吃什麼！我可以推薦幾家健康餐廳，或者教你做健康料理。';
   }
   // 預設回應
   else {
     const defaultResponses = [
-      '哼！又來找我了嗎？雖然我很忙，不過看在你這麼認真的份上，我還是可以抽空指導你一下。記住，保持健康的生活方式不是一時的事，而是需要長期堅持。有什麼問題就直接問我，不要客氣！但是，可不要讓我發現你偷懶喔！',
-      '怎麼又是你？不過既然你這麼有心想要改變，我也不能視而不見。來吧，讓我看看你最近的進步如何？需要我幫你調整計畫嗎？記住，在追求健康的道路上，我會一直在你身邊督促你！',
-      '看來你對健康生活越來越重視了嘛！雖然我說話可能比較直接，但那都是為了你好。只要你願意努力，我一定會盡我所能幫助你達成目標。不過可別期待我會一直這麼溫柔喔！該嚴格的時候我可是不會手軟的！'
+      '哼！既然來找我了，就要聽我的建議！保持健康的生活方式需要堅持，我會監督你的！',
+      '看來你對健康生活越來越重視了！雖然我說話直接，但都是為你好。繼續加油！',
+      '需要我幫你調整計畫嗎？在追求健康的路上，我會一直督促你！'
     ];
     response = defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
   }
