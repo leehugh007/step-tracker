@@ -114,13 +114,25 @@ function init() {
   function loadMessages() {
     db.ref(`messages/${today}`).once("value").then(snapshot => {
       messageList.innerHTML = "";
+  
       snapshot.forEach(child => {
         const { name, text } = child.val();
         const li = document.createElement("li");
-        li.className = "list-group-item";
-        li.textContent = `💬 ${name}：${text}`;
+  
+        // ✅ 若是「休總」，加上特別樣式
+        if (name === "休總") {
+          li.className = "list-group-item xiuzong-message";
+          li.textContent = `🎩 休總：${text}`;
+        } else {
+          li.className = "list-group-item";
+          li.textContent = `💬 ${name}：${text}`;
+        }
+  
         messageList.appendChild(li);
       });
+  
+      // ✅ 自動滾到底部
+      messageList.scrollTop = messageList.scrollHeight;
     });
   }
 
