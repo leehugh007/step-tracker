@@ -118,78 +118,94 @@ function init() {
   function loadMessages() {
     const messageList = document.getElementById('messageList');
     messageList.innerHTML = '';
-    const today = new Date().toISOString().slice(0, 10);
-    const db = window.firebaseDatabase;
-    
+
     db.ref(`messages/${today}`).on("value", snapshot => {
-      console.log('Raw Firebase data:', snapshot.val());
       messageList.innerHTML = '';
-      if (snapshot.exists()) {
-        // 收集所有消息片段
-        const messageSegments = {};
-        snapshot.forEach(child => {
-          const segment = child.val();
-          console.log('Processing segment:', segment);
-          
-          // 确保每个消息都有messageId
-          const messageId = segment.messageId || child.key;
-          if (!messageSegments[messageId]) {
-            messageSegments[messageId] = [];
+      const messageSegments = [];
+      const completeMessages = new Map(); // 用于存储完整的消息
+
+      // 首先收集所有消息段
+      snapshot.forEach(child => {
+        const segment = child.val();
+        messageSegments.push({
+          ...segment,
+          key: child.key
+        });
+      });
+
+      // 按照 messageId 分组并合并消息段
+      messageSegments.forEach(segment => {
+        if (segment.messageId) {
+          if (!completeMessages.has(segment.messageId)) {
+            completeMessages.set(segment.messageId, {
+              name: segment.name,
+              timestamp: segment.timestamp,
+              segments: new Array(segment.totalSegments).fill(null),
+              isXiuZong: segment.name === "休總"
+            });
           }
-          messageSegments[messageId].push(segment);
-        });
-        
-        console.log('Collected message segments:', messageSegments);
-        
-        // 合并和排序消息
-        const messages = Object.values(messageSegments).map(segments => {
-          // 按照片段索引排序
-          segments.sort((a, b) => (a.segmentIndex || 0) - (b.segmentIndex || 0));
-          // 合并文本
-          const mergedMessage = {
-            name: segments[0].name,
-            text: segments.map(s => s.text).join(''),
-            timestamp: segments[0].timestamp
+          const message = completeMessages.get(segment.messageId);
+          message.segments[segment.segmentIndex] = segment.text;
+        } else {
+          // 处理旧格式的消息（没有分段的）
+          completeMessages.set(segment.key, {
+            name: segment.name,
+            text: segment.text,
+            timestamp: segment.timestamp || segment.time,
+            isXiuZong: segment.name === "休總"
+          });
+        }
+      });
+
+      // 将 Map 转换为数组并合并分段
+      const messages = Array.from(completeMessages.values()).map(message => {
+        if (message.segments) {
+          // 合并分段的消息
+          return {
+            ...message,
+            text: message.segments.join('')
           };
-          console.log('Merged message:', mergedMessage);
-          return mergedMessage;
-        });
+        }
+        return message;
+      });
+
+      // 按时间戳排序
+      messages.sort((a, b) => a.timestamp - b.timestamp);
+
+      // 显示消息
+      messages.forEach(message => {
+        const li = document.createElement('li');
+        li.className = `list-group-item${message.isXiuZong ? ' xiuzong' : ''}`;
         
-        // 按时间戳排序
-        messages.sort((a, b) => a.timestamp - b.timestamp);
-        console.log('Final sorted messages:', messages);
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
         
-        // 显示消息
-        messages.forEach(message => {
-          const li = document.createElement('li');
-          li.className = message.name === '休總' ? 'list-group-item xiuzong' : 'list-group-item';
-          
-          const messageContent = document.createElement('div');
-          messageContent.className = 'message-content';
-          
-          const icon = document.createElement('span');
-          icon.className = message.name === '休總' ? 'message-icon xiuzong-icon' : 'message-icon';
-          icon.textContent = message.name === '休總' ? '🎩' : '👤';
-          
-          const name = document.createElement('strong');
-          name.className = message.name === '休總' ? 'xiuzong-name' : '';
-          name.textContent = message.name;
-          
-          const text = document.createElement('span');
-          text.className = message.name === '休總' ? 'xiuzong-text' : '';
-          text.textContent = ': ' + message.text;
-          console.log('Displaying message:', message.name, message.text);
-          
-          messageContent.appendChild(icon);
-          messageContent.appendChild(name);
-          messageContent.appendChild(text);
-          
-          li.appendChild(messageContent);
-          messageList.appendChild(li);
-        });
+        const icon = document.createElement('span');
+        icon.className = message.isXiuZong ? 'hat-icon' : 'message-icon';
+        icon.textContent = message.isXiuZong ? '��' : '👤';
         
-        messageList.scrollTop = messageList.scrollHeight;
-      }
+        const textContainer = document.createElement('div');
+        textContainer.className = `text-container${message.isXiuZong ? ' xiuzong-text' : ''}`;
+        
+        const name = document.createElement('strong');
+        name.className = message.isXiuZong ? 'xiuzong-name' : '';
+        name.textContent = message.name;
+        
+        const text = document.createElement('span');
+        text.className = message.isXiuZong ? 'xiuzong-text' : '';
+        text.textContent = `: ${message.text}`;
+        
+        textContainer.appendChild(name);
+        textContainer.appendChild(text);
+        
+        messageContent.appendChild(icon);
+        messageContent.appendChild(textContainer);
+        li.appendChild(messageContent);
+        
+        messageList.appendChild(li);
+      });
+
+      messageList.scrollTop = messageList.scrollHeight;
     });
   }
 
