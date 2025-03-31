@@ -294,53 +294,53 @@ function generateXiuZongResponse(userMessage) {
   // 關鍵詞匹配
   const keywords = {
     '垃圾食品': [
-      '哼！又在吃垃圾食品？',
-      '要記得均衡飲食，適量就好。',
-      '下次帶你去吃健康的！'
+      '哼！看看你又在吃什麼垃圾食品？就不能對自己的身體好一點嗎？',
+      '雖然偶爾放縱可以理解，但要記得均衡飲食才是王道。',
+      '...下次帶你去吃些健康的，別老是吃這些。'
     ],
     '不想動': [
-      '又在找藉口偷懶？',
-      '適度運動對身體很重要！',
-      '要我陪你走走嗎？'
+      '又在找藉口偷懶了？這可不是成為更好的自己的態度！',
+      '適度運動對身體和心理健康都很重要，你應該比誰都清楚。',
+      '...要我陪你走走嗎？反正我剛好也想運動了。'
     ],
     '好累': [
-      '這樣就累了？',
-      '循序漸進，別太勉強。',
-      '需要我幫你規劃嗎？'
+      '累？累個頭啊！這點挑戰就想放棄了嗎？',
+      '要循序漸進，別一開始就給自己太大壓力，慢慢來比較快。',
+      '需要的話...我可以幫你規劃一個適合的訓練計劃。'
     ],
     '吃': [
-      '又在吃什麼了？',
-      '記得要均衡營養！',
-      '要不要試試健康餐？'
+      '哼！又在吃什麼了？就你最會吃！',
+      '記得要均衡營養，不是說吃得多就好。',
+      '...要不要試試我推薦的健康餐？味道還不錯。'
     ],
     '步': [
-      '才走這麼一點？',
-      '繼續保持，慢慢來！',
-      '下次一起走吧！'
+      '就這樣而已？還想成為運動達人？',
+      '不過...能持之以恆地走也是不錯的開始。',
+      '下次一起走吧！我會盯著你的進度。'
     ],
     '沒動力': [
-      '這就想放棄了？',
-      '設定目標，一步一步來！',
-      '我會盯著你的！'
+      '沒動力？這麼快就想放棄了嗎？真是讓人失望！',
+      '設定一個合理的目標，然後一步一步朝著它前進。',
+      '...我會在旁邊看著你的，別讓我失望啊！'
     ]
   };
 
   // 預設回覆
   const defaultResponses = [
     [
-      '哼，又來了...',
-      '保持規律很重要！',
-      '我會關注你的！'
+      '哼，又來打擾我了嗎？',
+      '既然來了，就好好聽我說：保持規律的運動和健康的飲食才是王道。',
+      '...我會關注你的進度，別想偷懶！'
     ],
     [
-      '什麼事啊？',
-      '記得保持好習慣！',
-      '需要指導找我！'
+      '什麼事啊？這麼沒幹勁的樣子可不行！',
+      '記得保持良好的生活習慣，這是最基本的。',
+      '需要指導的話...哼，我勉強可以教你一下。'
     ],
     [
-      '真是麻煩...',
-      '堅持就會有收穫！',
-      '加油，看好你！'
+      '真是個麻煩的傢伙...',
+      '不過既然你這麼認真，我也不能不管你。',
+      '加油吧！我會一直看著你的成長。'
     ]
   ];
 
@@ -358,8 +358,7 @@ function generateXiuZongResponse(userMessage) {
     response = defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
   }
 
-  // 確保每條消息不會太長
-  return response.map(text => text.slice(0, 100)).join(' ');
+  return response.join(' ');
 }
 
 function sendMessage() {
@@ -369,11 +368,9 @@ function sendMessage() {
   const name = nameSelect.value;
 
   if (text && name) {
-    // 限制消息長度
-    const limitedText = text.slice(0, 100);
     const message = {
       name: name,
-      text: limitedText,
+      text: text,
       timestamp: Date.now()
     };
 
@@ -385,7 +382,7 @@ function sendMessage() {
         setTimeout(() => {
           const response = {
             name: '休總',
-            text: generateXiuZongResponse(limitedText),
+            text: generateXiuZongResponse(text),
             timestamp: Date.now()
           };
           db.ref(`messages/${today}`).push(response);
