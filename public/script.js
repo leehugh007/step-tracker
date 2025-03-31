@@ -130,21 +130,13 @@ function init() {
         snapshot.forEach(child => {
           const segment = child.val();
           console.log('Processing segment:', segment);
-          // 如果消息有 messageId，说明是分段消息
-          if (segment.messageId) {
-            if (!messageSegments[segment.messageId]) {
-              messageSegments[segment.messageId] = [];
-            }
-            messageSegments[segment.messageId].push(segment);
-          } else {
-            // 如果没有 messageId，说明是旧消息或单段消息
-            messageSegments[child.key] = [{
-              ...segment,
-              messageId: child.key,
-              segmentIndex: 0,
-              totalSegments: 1
-            }];
+          
+          // 确保每个消息都有messageId
+          const messageId = segment.messageId || child.key;
+          if (!messageSegments[messageId]) {
+            messageSegments[messageId] = [];
           }
+          messageSegments[messageId].push(segment);
         });
         
         console.log('Collected message segments:', messageSegments);
@@ -152,7 +144,7 @@ function init() {
         // 合并和排序消息
         const messages = Object.values(messageSegments).map(segments => {
           // 按照片段索引排序
-          segments.sort((a, b) => a.segmentIndex - b.segmentIndex);
+          segments.sort((a, b) => (a.segmentIndex || 0) - (b.segmentIndex || 0));
           // 合并文本
           const mergedMessage = {
             name: segments[0].name,
@@ -335,6 +327,7 @@ function sendMessage() {
 
   if (text && name) {
     const baseTimestamp = Date.now();
+    console.log('Sending message:', { name, text, timestamp: baseTimestamp });
     
     // 如果是休總發的消息，自動回覆
     if (name === '休總') {
@@ -343,59 +336,84 @@ function sendMessage() {
         // 延遲一下再發送休總的回覆
         setTimeout(() => {
           const responseText = generateXiuZongResponse(text);
-          storeMessage('休總', responseText, Date.now());
+          console.log('Generated response:', responseText);
+          storeMessage('休總', responseText, Date.now()).then(() => {
+            console.log('Response stored successfully');
+          }).catch(error => {
+            console.error('Error storing response:', error);
+          });
         }, 1000);
+      }).catch(error => {
+        console.error('Error storing message:', error);
       });
     } else {
       // 如果不是休總的消息
-      storeMessage(name, text, baseTimestamp);
+      storeMessage(name, text, baseTimestamp).then(() => {
+        console.log('User message stored successfully');
+      }).catch(error => {
+        console.error('Error storing message:', error);
+      });
     }
 
     messageInput.value = '';
   }
 }
 
-// 新增：處理消息存儲的函數
 function storeMessage(name, text, timestamp) {
   const today = new Date().toISOString().slice(0, 10);
   const db = window.firebaseDatabase;
-  const messageRef = db.ref(`messages/${today}`).push();
-  const messageId = messageRef.key;
-
-  // 如果消息長度超過100個字符，分段存儲
-  if (text.length > 100) {
+  
+  // 生成唯一的消息ID
+  const messageId = db.ref(`messages/${today}`).push().key;
+  console.log('Storing message with ID:', messageId, { name, text, timestamp });
+  
+  try {
+    // 将消息分段（每段最多100个字符）
     const segments = [];
-    const segmentCount = Math.ceil(text.length / 100);
+    const segmentLength = 100;
+    const segmentCount = Math.ceil(text.length / segmentLength);
     
-    for (let i = 0; i < segmentCount; i++) {
-      const start = i * 100;
-      const end = Math.min((i + 1) * 100, text.length);
-      const segmentText = text.slice(start, end);
-      
-      segments.push({
-        name,
-        text: segmentText,
-        timestamp: timestamp + i,
-        messageId,
-        segmentIndex: i,
-        totalSegments: segmentCount
-      });
-    }
-    
-    // 使用Promise.all確保所有段都存儲完成
-    return Promise.all(segments.map(segment => 
-      db.ref(`messages/${today}`).push().set(segment)
-    ));
-  } else {
-    // 如果消息較短，直接存儲
-    return messageRef.set({
+    console.log('Message details:', {
       name,
       text,
-      timestamp,
-      messageId,
-      segmentIndex: 0,
-      totalSegments: 1
+      length: text.length,
+      segmentCount,
+      messageId
     });
+    
+    // 即使消息长度小于100，也创建至少一个段
+    for (let i = 0; i < Math.max(1, segmentCount); i++) {
+      const start = i * segmentLength;
+      const end = Math.min((i + 1) * segmentLength, text.length);
+      const segmentText = text.slice(start, end);
+      
+      const segment = {
+        name,
+        text: segmentText,
+        timestamp: timestamp + i,  // 确保段按顺序排列
+        messageId,
+        segmentIndex: i,
+        totalSegments: Math.max(1, segmentCount)
+      };
+      
+      console.log(`Segment ${i + 1}/${segmentCount}:`, segment);
+      segments.push(segment);
+    }
+    
+    // 使用Promise.all确保所有段都存储完成
+    return Promise.all(segments.map(segment => {
+      const newRef = db.ref(`messages/${today}`).push();
+      console.log('Storing segment with key:', newRef.key);
+      return newRef.set(segment);
+    })).then(() => {
+      console.log('All segments stored successfully');
+    }).catch(error => {
+      console.error('Error storing segments:', error);
+      throw error;
+    });
+  } catch (error) {
+    console.error('Error in storeMessage:', error);
+    return Promise.reject(error);
   }
 }
 
