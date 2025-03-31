@@ -134,7 +134,30 @@ function init() {
         
         messages.sort((a, b) => a.timestamp - b.timestamp);
         
+        // 合并相同发送者的连续消息
+        const mergedMessages = [];
+        let currentMessage = null;
+        
         messages.forEach(message => {
+          if (currentMessage && 
+              currentMessage.name === message.name && 
+              message.text.endsWith('...')) {
+            // 如果是同一个发送者的连续消息，合并文本
+            currentMessage.text = currentMessage.text.replace(/\.{3}$/, '') + message.text;
+          } else {
+            if (currentMessage) {
+              mergedMessages.push(currentMessage);
+            }
+            currentMessage = {...message};
+          }
+        });
+        
+        if (currentMessage) {
+          mergedMessages.push(currentMessage);
+        }
+        
+        // 显示合并后的消息
+        mergedMessages.forEach(message => {
           const li = document.createElement('li');
           li.className = message.name === '休總' ? 'list-group-item xiuzong' : 'list-group-item';
           
