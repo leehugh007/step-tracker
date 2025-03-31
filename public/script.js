@@ -141,6 +141,7 @@ function init() {
         if (segments.length === 1) return segments[0];
         
         // Merge segments
+        // 合併分段
         const baseMsg = {...segments[0]};
         baseMsg.text = segments
           .sort((a, b) => a.segmentIndex - b.segmentIndex)
@@ -149,28 +150,47 @@ function init() {
         return baseMsg;
       });
 
-      // Sort by timestamp
+      // 按時間戳排序
       const sortedMessages = mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
       
-      // Clear and rebuild messages display
-      const messagesDiv = document.getElementById('messages');
-      messagesDiv.innerHTML = '';
+      // 清空並重建消息顯示
+      const messageList = document.getElementById('messageList');
+      messageList.innerHTML = '';
       
       sortedMessages.forEach(msg => {
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message';
-        messageElement.innerHTML = `
-          <div class="message-header">
-            <span class="name">${msg.name}</span>
-            <span class="time">${formatTime(msg.timestamp)}</span>
-          </div>
-          <div class="message-content">${msg.text}</div>
-        `;
-        messagesDiv.appendChild(messageElement);
+        const li = document.createElement('li');
+        li.className = `list-group-item${msg.name === '休總' ? ' xiuzong' : ''}`;
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        const icon = document.createElement('span');
+        icon.className = msg.name === '休總' ? 'hat-icon' : 'message-icon';
+        icon.textContent = msg.name === '休總' ? '🎩' : '👤';
+        
+        const textContainer = document.createElement('div');
+        textContainer.className = `text-container${msg.name === '休總' ? ' xiuzong-text' : ''}`;
+        
+        const name = document.createElement('strong');
+        name.className = msg.name === '休總' ? 'xiuzong-name' : '';
+        name.textContent = msg.name;
+        
+        const text = document.createElement('span');
+        text.className = msg.name === '休總' ? 'xiuzong-text' : '';
+        text.textContent = `: ${msg.text}`;
+        
+        textContainer.appendChild(name);
+        textContainer.appendChild(text);
+        
+        messageContent.appendChild(icon);
+        messageContent.appendChild(textContainer);
+        li.appendChild(messageContent);
+        
+        messageList.appendChild(li);
       });
       
-      // Scroll to bottom
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      // 滾動到底部
+      messageList.scrollTop = messageList.scrollHeight;
     });
   }
 
@@ -300,62 +320,76 @@ function shootHearts() {
 
 function sendMessage() {
   const messageInput = document.getElementById('messageInput');
-  const nameSelect = document.getElementById('nameSelect');
-  const text = messageInput.value.trim();
-  const name = nameSelect.value;
-  const today = new Date().toISOString().slice(0, 10);
-  const db = window.firebaseDatabase;
+  const nameInput = document.getElementById('nameInput');
+  const message = messageInput.value.trim();
+  const name = nameInput.value.trim() || '匿名';
 
-  if (text && name) {
-    const baseTimestamp = Date.now();
-    
-    // 如果是休總發的消息，自動回覆
-    if (name === '休總') {
-      // 先發送用戶的消息
-      storeMessage(name, text, baseTimestamp).then(() => {
-        // 延遲一下再發送休總的回覆
-        setTimeout(() => {
-          const responseText = generateXiuZongResponse(text);
-          storeMessage('休總', responseText, Date.now()).then(() => {
-            console.log('Response stored successfully');
-          }).catch(error => {
-            console.error('Error storing response:', error);
-          });
-        }, 1000);
-      }).catch(error => {
-        console.error('Error storing message:', error);
-      });
-    } else {
-      // 如果不是休總的消息
-      storeMessage(name, text, baseTimestamp).then(() => {
-        console.log('User message stored successfully');
-      }).catch(error => {
-        console.error('Error storing message:', error);
-      });
-    }
+  if (!message) return;
 
-    messageInput.value = '';
-  }
+  const timestamp = Date.now();
+  
+  // 先清空輸入框
+  messageInput.value = '';
+  
+  // 存儲消息
+  storeMessage(name, message, timestamp)
+    .then(() => {
+      console.log('消息發送成功');
+    })
+    .catch(error => {
+      console.error('發送消息時出錯：', error);
+      alert('發送消息失敗，請重試');
+    });
 }
 
 function storeMessage(name, text, timestamp) {
   const today = new Date().toISOString().slice(0, 10);
   const db = window.firebaseDatabase;
   
-  // 直接存储完整消息，不进行分段
-  const messageData = {
-    name,
-    text,
-    timestamp
-  };
+  // 生成唯一的消息ID
+  const messageId = db.ref().push().key;
   
-  // 使用 set 而不是 push 来确保数据完整性
-  return db.ref(`messages/${today}`).push().set(messageData)
+  // 將消息分段存儲
+  const MAX_SEGMENT_LENGTH = 200;
+  const segments = [];
+  let remainingText = text;
+  
+  while (remainingText.length > 0) {
+    // 尋找合適的斷點（句子結束或空格）
+    let segmentLength = Math.min(MAX_SEGMENT_LENGTH, remainingText.length);
+    if (segmentLength < remainingText.length) {
+      // 嘗試在句子結束處斷開
+      const lastPeriod = remainingText.lastIndexOf('。', MAX_SEGMENT_LENGTH);
+      const lastSpace = remainingText.lastIndexOf(' ', MAX_SEGMENT_LENGTH);
+      const breakPoint = lastPeriod > 0 ? lastPeriod + 1 : 
+                       lastSpace > 0 ? lastSpace + 1 : segmentLength;
+      segmentLength = breakPoint;
+    }
+    
+    segments.push(remainingText.substring(0, segmentLength));
+    remainingText = remainingText.substring(segmentLength);
+  }
+  
+  // 創建更新對象
+  const updates = {};
+  segments.forEach((segment, index) => {
+    updates[`messages/${today}/${messageId}_${index}`] = {
+      name,
+      text: segment,
+      timestamp,
+      messageId,
+      segmentIndex: index,
+      totalSegments: segments.length
+    };
+  });
+  
+  // 使用 update 方法一次性更新所有分段
+  return db.ref().update(updates)
     .then(() => {
-      console.log('Message stored successfully:', messageData);
+      console.log('消息存儲成功，共', segments.length, '段');
     })
     .catch(error => {
-      console.error('Error storing message:', error);
+      console.error('存儲消息時出錯：', error);
       throw error;
     });
 }
