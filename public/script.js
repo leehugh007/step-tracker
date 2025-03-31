@@ -118,55 +118,51 @@ function init() {
   function loadMessages() {
     const messageList = document.getElementById('messageList');
     messageList.innerHTML = '';
-
+    
     db.ref(`messages/${today}`).on("value", snapshot => {
       messageList.innerHTML = '';
-      const messages = [];
-      snapshot.forEach(child => {
-        const message = child.val();
-        messages.push({
-          ...message,
-          key: child.key,
-          timestamp: message.timestamp || message.time,
-          isXiuZong: message.name === "休總"
+      if (snapshot.exists()) {
+        const messages = [];
+        snapshot.forEach(child => {
+          const message = child.val();
+          messages.push({
+            ...message,
+            key: child.key,
+            timestamp: message.timestamp || message.time
+          });
         });
-      });
-      
-      messages.sort((a, b) => a.timestamp - b.timestamp);
-
-      messages.forEach(message => {
-        const li = document.createElement('li');
-        li.className = `list-group-item${message.isXiuZong ? ' xiuzong' : ''}`;
         
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
+        messages.sort((a, b) => a.timestamp - b.timestamp);
         
-        const icon = document.createElement('span');
-        icon.className = message.isXiuZong ? 'hat-icon' : 'message-icon';
-        icon.textContent = message.isXiuZong ? '🎩' : '👤';
+        messages.forEach(message => {
+          const li = document.createElement('li');
+          li.className = message.name === '休總' ? 'list-group-item xiuzong' : 'list-group-item';
+          
+          const messageContent = document.createElement('div');
+          messageContent.className = 'message-content';
+          
+          const icon = document.createElement('span');
+          icon.className = message.name === '休總' ? 'message-icon xiuzong-icon' : 'message-icon';
+          icon.textContent = message.name === '休總' ? '🎩' : '👤';
+          
+          const name = document.createElement('strong');
+          name.className = message.name === '休總' ? 'xiuzong-name' : '';
+          name.textContent = message.name;
+          
+          const text = document.createElement('span');
+          text.className = message.name === '休總' ? 'xiuzong-text' : '';
+          text.textContent = ': ' + message.text;
+          
+          messageContent.appendChild(icon);
+          messageContent.appendChild(name);
+          messageContent.appendChild(text);
+          
+          li.appendChild(messageContent);
+          messageList.appendChild(li);
+        });
         
-        const textContainer = document.createElement('div');
-        textContainer.className = `text-container${message.isXiuZong ? ' xiuzong-text' : ''}`;
-        
-        const name = document.createElement('strong');
-        name.className = message.isXiuZong ? 'xiuzong-name' : '';
-        name.textContent = message.name;
-        
-        const text = document.createElement('span');
-        text.className = message.isXiuZong ? 'xiuzong-text' : '';
-        text.textContent = `: ${message.text}`;
-        
-        textContainer.appendChild(name);
-        textContainer.appendChild(text);
-        
-        messageContent.appendChild(icon);
-        messageContent.appendChild(textContainer);
-        li.appendChild(messageContent);
-        
-        messageList.appendChild(li);
-      });
-
-      messageList.scrollTop = messageList.scrollHeight;
+        messageList.scrollTop = messageList.scrollHeight;
+      }
     });
   }
 
@@ -297,44 +293,54 @@ function shootHearts() {
 function generateXiuZongResponse(userMessage) {
   // 關鍵詞匹配
   const keywords = {
+    '步': [
+      '哼，才走這麼一點路就在這邊炫耀了？',
+      '保持這個步數，慢慢增加才是正確的方式。',
+      '...下次要不要一起去運動？我剛好也想散步。'
+    ],
     '不想動': [
-      '哼，又在找藉口偷懶了？',
-      '適度運動能提升你的精神狀態和工作效率。',
-      '...要不要我陪你走走？反正我剛好也要運動。'
+      '哼，又在找藉口偷懶了嗎？',
+      '適度運動對身體和心理健康都很重要。',
+      '要我陪你走走嗎？...只是剛好順路而已！'
     ],
     '好累': [
-      '累？就你這體能還想挑戰我？',
-      '注意適度休息，但別讓身體習慣懶散。',
-      '需要的話...我可以調整一下你的運動計劃。'
+      '就這樣就累了？體能也太差了吧！',
+      '要循序漸進，別一開始就勉強自己。',
+      '...需要的話，我可以幫你規劃訓練計劃。'
     ],
     '吃': [
-      '就知道吃！...等等，讓我看看是什麼。',
-      '均衡的營養攝入對身體至關重要。',
-      '下次要不要一起吃個健康午餐？我知道一家不錯的店。'
+      '又在吃那些不健康的食物了嗎？',
+      '均衡飲食很重要，但偶爾放縱一下也沒關係。',
+      '下次帶你去吃健康的美食...只是順便啦！'
+    ],
+    '垃圾食品': [
+      '看來今天的你又在享受那些美味的垃圾食品了啊！',
+      '但是記得，偶爾吃一些也沒關係，只要能控制好平衡，保持健康的生活方式就好。',
+      '...要不要下次一起去吃些健康的食物？我知道幾家不錯的店。'
     ],
     '沒動力': [
-      '哼，就這點挫折就要放棄了？',
-      '設定明確的目標，並且循序漸進是保持動力的關鍵。',
-      '...我會關注你的進度的，別讓我失望。'
+      '哼，這麼快就想放棄了嗎？',
+      '設定合理的目標，一步一步來才是王道。',
+      '...我會幫你加油的，別讓我失望啊！'
     ]
   };
 
   // 預設回覆
   const defaultResponses = [
     [
-      '哼，又在說些什麼無聊的話...',
-      '保持規律的作息和運動才是健康的基礎。',
-      '...我會盯著你的，別想偷懶。'
+      '哼，又在說些無聊的話...',
+      '堅持運動和健康飲食才是最重要的。',
+      '...我會關注你的進度，別想偷懶！'
     ],
     [
-      '這麼簡單的事情還需要我來教你嗎？',
-      '建立良好的生活習慣比一時的衝動更重要。',
-      '需要幫忙的話...哼，勉強可以指導你一下。'
+      '這種小事也要來問我嗎？',
+      '保持良好的生活習慣比一時的衝動更重要。',
+      '需要指導的話...哼，我勉強可以教你一下。'
     ],
     [
       '真是個麻煩的傢伙...',
       '要達到目標就要有持之以恆的決心。',
-      '...我會在旁邊看著你的，加油吧。'
+      '...我會在旁邊看著你的，加油吧！'
     ]
   ];
 
@@ -371,17 +377,17 @@ function sendMessage() {
     // 如果是休總發的消息，自動回覆
     if (name === '休總') {
       // 先發送用戶的消息
-      db.ref(`messages/${today}`).push(message);
-      
-      // 延遲一下再發送休總的回覆
-      setTimeout(() => {
-        const response = {
-          name: '休總',
-          text: generateXiuZongResponse(text),
-          timestamp: Date.now()
-        };
-        db.ref(`messages/${today}`).push(response);
-      }, 1000);
+      db.ref(`messages/${today}`).push(message).then(() => {
+        // 延遲一下再發送休總的回覆
+        setTimeout(() => {
+          const response = {
+            name: '休總',
+            text: generateXiuZongResponse(text),
+            timestamp: Date.now()
+          };
+          db.ref(`messages/${today}`).push(response);
+        }, 1000);
+      });
     } else {
       db.ref(`messages/${today}`).push(message);
     }
